@@ -1823,6 +1823,11 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         threadGroup.create_thread(boost::bind(&ThreadFlushWalletDB, boost::ref(pwalletMain->strWalletFile)));
     }
 #endif
+    std::string rpcuser = GetArg("-rpcuser", "");
+    std::string rpcpassword = GetArg("-rpcuser", "");
+    fs::path drivechain_dir = GetDataDir();
+    // Init drivechain object
+    drivechain.reset(new CDrivechain(drivechain_dir, rpcuser, rpcpassword));
 
     // SENDALERT
     threadGroup.create_thread(boost::bind(ThreadSendAlert));
