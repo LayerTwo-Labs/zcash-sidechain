@@ -162,6 +162,78 @@ UniValue getgenerate(const UniValue& params, bool fHelp)
     return GetBoolArg("-gen", DEFAULT_GENERATE);
 }
 
+UniValue refreshbmm(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 1)
+        throw runtime_error(
+            "refreshbmm\n"
+            "\nRefresh automated BMM. Basic testing implementation\n"
+            "\nArguments:\n"
+            "1. \"amount\"                (numeric) Amount to pay mainchain miner for including BMM request (required)\n"
+            "2. \"createnew\" true|false  (bool) Create a new BMM block if possible\n (optional, default: true)\n"
+            "3. \"prevblock\"             (string) Hash of sidechain block to build on (optional, default: chaintip)\n"
+            "\nResult:\n"
+            "hash_last_main_block  (string) Hash of mainchain tip.\n"
+            "bmm_block_created     (string) Hash of new BMM block created.\n"
+            "bmm_block_submitted   (string) Hash of BMM block connected to sidechain.\n"
+            "ntxn                  (number) Number of txn in new BMM request (if created).\n"
+            "nfees                 (number) Total fees in new block (if created).\n"
+            "txid                  (string) Mainchain BMM request TXID.\n"
+            "error                 (string) Output from sidechain client.\n"
+        );
+
+    if (!Params().MineBlocksOnDemand())
+        throw JSONRPCError(RPC_METHOD_NOT_FOUND, "This method can only be used on regtest");
+
+    int nHeight = 0;
+    CAmount nAmount = AmountFromValue(params[0]);
+
+    MinerAddress minerAddress;
+    GetMainSignals().AddressForMining(minerAddress);
+
+    // If the keypool is exhausted, no script is returned at all.  Catch this.
+    auto resv = std::get_if<boost::shared_ptr<CReserveScript>>(&minerAddress);
+    if (resv && !resv->get()) {
+        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+    }
+
+    // Throw an error if no address valid for mining was provided.
+    if (!std::visit(IsValidMinerAddress(), minerAddress)) {
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "No miner address available (mining requires a wallet or -mineraddress)");
+    }
+
+    {   // Don't keep cs_main locked
+        LOCK(cs_main);
+        nHeight = chainActive.Height();
+    }
+    unsigned int nExtraNonce = 0;
+    UniValue blockHashes(UniValue::VARR);
+
+    std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(Params(), minerAddress));
+    if (!pblocktemplate.get())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
+    CBlock *pblock = &pblocktemplate->block;
+    {
+        LOCK(cs_main);
+        IncrementExtraNonce(pblocktemplate.get(), chainActive.Tip(), nExtraNonce, Params().GetConsensus());
+    }
+
+    std::optional<CBlock> minedBlock = drivechain->attempt_bmm(*pblock, nAmount);
+
+    if (minedBlock) {
+        LogPrintf("block = %s\n", minedBlock->ToString());
+        // CValidationState state;
+        // if (!ProcessNewBlock(state, Params(), NULL, pblock, true, NULL))
+        //     throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
+        // ++nHeight;
+        // blockHashes.push_back(pblock->GetHash().GetHex());
+
+        // //mark miner address as important because it was used at least for one coinbase output
+        // std::visit(KeepMinerAddress(), minerAddress);
+    }
+    return blockHashes;
+}
+
 UniValue generate(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 1)
@@ -1051,6 +1123,7 @@ static const CRPCCommand commands[] =
     { "mining",             "getblocktemplate",       &getblocktemplate,       true  },
     { "mining",             "submitblock",            &submitblock,            true  },
     { "mining",             "getblocksubsidy",        &getblocksubsidy,        true  },
+    { "mining",             "refreshbmm",             &refreshbmm,             true  },
 
 #ifdef ENABLE_MINING
     { "generating",         "getgenerate",            &getgenerate,            true  },

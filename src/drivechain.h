@@ -22,7 +22,7 @@ private:
 
 public:
     CDrivechain(fs::path datadir, std::string rpcuser, std::string rpcpassword);
-    std::optional<MinedBlock> attempt_bmm(const CBlock& block, CAmount amount);
+    std::optional<CBlock> attempt_bmm(const CBlock& block, CAmount amount);
 };
 
 #endif // BITCOIN_DRIVECHAIN_H

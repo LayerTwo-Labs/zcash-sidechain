@@ -1824,7 +1824,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     }
 #endif
     std::string rpcuser = GetArg("-rpcuser", "");
-    std::string rpcpassword = GetArg("-rpcuser", "");
+    std::string rpcpassword = GetArg("-rpcpassword", "");
     fs::path drivechain_dir = GetDataDir();
     // Init drivechain object
     drivechain.reset(new CDrivechain(drivechain_dir, rpcuser, rpcpassword));

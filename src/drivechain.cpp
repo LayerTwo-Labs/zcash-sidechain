@@ -16,7 +16,7 @@ CDrivechain::CDrivechain(fs::path datadir, std::string rpcuser, std::string rpcp
                            .into_raw();
 }
 
-std::optional<MinedBlock> CDrivechain::attempt_bmm(const CBlock& block, CAmount amount)
+std::optional<CBlock> CDrivechain::attempt_bmm(const CBlock& block, CAmount amount)
 {
     std::string block_data = EncodeHexBlk(block);
     uint256 critical_hash = block.hashMerkleRoot;
@@ -29,6 +29,12 @@ std::optional<MinedBlock> CDrivechain::attempt_bmm(const CBlock& block, CAmount 
         mined.nTime = block_vec[0].time;
         std::string main_block_hash = std::string(block_vec[0].main_block_hash.begin(), block_vec[0].main_block_hash.end());
         mined.hashMainchainBlock = uint256S(main_block_hash);
-        return mined;
+
+        CBlock block;
+        if (DecodeHexBlk(block, mined.block)) {
+            return block;
+        } else {
+            return std::nullopt;
+        }
     }
 }
