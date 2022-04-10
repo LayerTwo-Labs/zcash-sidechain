@@ -1,0 +1,64 @@
+[package]
+name = "librustzcash"
+description = "Rust FFI used by the zcashd binary. Not an official API."
+version = "0.2.0"
+authors = [
+    "Sean Bowe <sean@electriccoin.co>",
+    "Jay Graber",
+    "Jack Grigg <jack@electriccoin.co>",
+    "Daira Hopwood <daira@electriccoin.co>",
+    "Ying Tong Lai <yingtong@electriccoin.co>",
+    "Simon Liu",
+    "Kris Nuttycombe <kris@electriccoin.co>",
+    "Larry Ruane <larry@electriccoin.co>",
+    "Steven Smith <steven@electriccoin.co>"
+]
+homepage = "https://github.com/zcash/zcash"
+repository = "https://github.com/zcash/zcash"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+edition = "2018"
+rust-version = "1.56"
+
+[lib]
+name = "rustzcash"
+path = "../src/rust/src/rustzcash.rs"
+crate-type = ["staticlib"]
+
+[dependencies]
+bellman = "0.11"
+blake2b_simd = "1"
+blake2s_simd = "1"
+bls12_381 = "0.6"
+byteorder = "1"
+group = "0.11"
+incrementalmerkletree = "0.2"
+libc = "0.2"
+jubjub = "0.8"
+memuse = "0.2"
+nonempty = "0.7"
+orchard = "=0.1.0-beta.1"
+subtle = "2.2"
+rand_core = "0.6"
+tracing = "0.1"
+tracing-core = "0.1"
+tracing-appender = "0.2"
+zcash_address = "0.0"
+zcash_history = "0.2"
+zcash_note_encryption = "0.1"
+zcash_primitives = "0.5"
+zcash_proofs = "0.5"
+ed25519-zebra = "3"
+
+# Metrics
+hyper = { version = "=0.14.2", default-features = false, features = ["server", "tcp", "http1"] }
+ipnet = "2"
+metrics = "0.17"
+metrics-exporter-prometheus = "0.6"
+thiserror = "1"
+tokio = { version = "1.0", features = ["rt", "net", "time", "macros"] }
+
+[dependencies.tracing-subscriber]
+version = "0.3"
+default-features = false
+features = ["ansi", "env-filter", "time"]

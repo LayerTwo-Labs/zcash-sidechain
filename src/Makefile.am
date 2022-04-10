@@ -26,6 +26,7 @@ LIBBITCOIN_CLI=libbitcoin_cli.a
 LIBBITCOIN_UTIL=libbitcoin_util.a
 LIBBITCOIN_CRYPTO=crypto/libbitcoin_crypto.a
 LIBRUSTZCASH=$(top_builddir)/target/$(RUST_TARGET)/release/librustzcash.a
+LIBRUSTDRIVECHAIN=$(top_builddir)/target/$(RUST_TARGET)/release/librustdrivechain.a
 LIBSECP256K1=secp256k1/libsecp256k1.la
 LIBUNIVALUE=univalue/libunivalue.la
 LIBZCASH=libzcash.a
@@ -132,6 +133,7 @@ BITCOIN_CORE_H = \
   asyncrpcqueue.h \
   base58.h \
   bech32.h \
+  bridge.rs.h \
   bloom.h \
   chain.h \
   chainparams.h \
@@ -473,6 +475,7 @@ zcashd_LDADD = \
   $(LIBBITCOIN_CRYPTO) \
   $(LIBZCASH) \
   $(LIBRUSTZCASH) \
+  $(LIBRUSTDRIVECHAIN) \
   $(LIBLEVELDB) \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \
@@ -505,6 +508,7 @@ zcash_cli_LDADD = \
   $(EVENT_LIBS) \
   $(LIBZCASH) \
   $(LIBRUSTZCASH) \
+  $(LIBRUSTDRIVECHAIN) \
   $(LIBBITCOIN_CRYPTO) \
   $(LIBZCASH_LIBS)
 #
@@ -527,6 +531,7 @@ zcash_tx_LDADD = \
   $(LIBSECP256K1) \
   $(LIBZCASH) \
   $(LIBRUSTZCASH) \
+  $(LIBRUSTDRIVECHAIN) \
   $(LIBBITCOIN_CRYPTO) \
   $(LIBZCASH_LIBS)
 

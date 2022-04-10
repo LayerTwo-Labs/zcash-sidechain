@@ -222,6 +222,7 @@ UniValue refreshbmm(const UniValue& params, bool fHelp)
 
     if (minedBlock) {
         LogPrintf("block = %s\n", minedBlock->ToString());
+        drivechain->verify_bmm(*minedBlock);
         // CValidationState state;
         // if (!ProcessNewBlock(state, Params(), NULL, pblock, true, NULL))
         //     throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");

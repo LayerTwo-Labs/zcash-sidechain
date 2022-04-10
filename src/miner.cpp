@@ -307,7 +307,14 @@ CMutableTransaction CreateCoinbaseTransaction(const CChainParams& chainparams, C
             AddOutputsToCoinbaseTxAndSign(mtx, chainparams, nHeight, nFees),
             minerAddress);
 
+        std::vector<uint8_t> data = drivechain->get_coinbase_data();
+        CTxOut dataOut;
+        dataOut.nValue = 0;
+        dataOut.scriptPubKey = CScript() << data;
+        mtx.vout.push_back(dataOut);
+
         mtx.vin[0].scriptSig = CScript() << nHeight << OP_0;
+        LogPrintf("coinbase = %s\n", CTransaction(mtx).ToString());
         return mtx;
 }
 
