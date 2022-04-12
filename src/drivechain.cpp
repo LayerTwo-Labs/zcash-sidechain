@@ -1,5 +1,6 @@
 #include "drivechain.h"
 #include "core_io.h"
+#include "utilstrencodings.h"
 #include "logging.h"
 
 const size_t THIS_SIDECHAIN = 0;
@@ -17,7 +18,7 @@ CDrivechain::CDrivechain(fs::path datadir, std::string rpcuser, std::string rpcp
                            .into_raw();
 }
 
-std::optional<CBlock> CDrivechain::attempt_bmm(const CBlock& block, CAmount amount)
+std::optional<CBlock> CDrivechain::AttemptBMM(const CBlock& block, CAmount amount)
 {
     std::string block_data = EncodeHexBlk(block);
     uint256 critical_hash = block.hashMerkleRoot;
@@ -29,10 +30,11 @@ std::optional<CBlock> CDrivechain::attempt_bmm(const CBlock& block, CAmount amou
         mined.block = std::string(block_vec[0].data.begin(), block_vec[0].data.end());
         mined.nTime = block_vec[0].time;
         std::string main_block_hash = std::string(block_vec[0].main_block_hash.begin(), block_vec[0].main_block_hash.end());
-        mined.hashMainchainBlock = uint256S(main_block_hash);
+        mined.hashMainBlock = uint256S(main_block_hash);
 
         CBlock block;
         if (DecodeHexBlk(block, mined.block)) {
+            block.hashMainBlock = mined.hashMainBlock;
             return block;
         } else {
             return std::nullopt;
@@ -40,17 +42,23 @@ std::optional<CBlock> CDrivechain::attempt_bmm(const CBlock& block, CAmount amou
     }
 }
 
-std::vector<uint8_t> CDrivechain::get_coinbase_data()
+CTxOut CDrivechain::GetCoinbaseDataOutput()
 {
-    rust::Vec<uint8_t> vec_coinbase_data = this->drivechain->get_coinbase_data();
-    std::vector<uint8_t> coinbase_data(vec_coinbase_data.begin(), vec_coinbase_data.end());
-    return coinbase_data;
+    rust::Vec<uint8_t> coinbase_data = this->drivechain->get_coinbase_data();
+    CTxOut dataOut;
+    dataOut.nValue = 0;
+    dataOut.scriptPubKey = CScript(OP_RETURN) + CScript(&*coinbase_data.begin(), &*coinbase_data.end());
+    return dataOut;
 }
 
-bool CDrivechain::verify_bmm(const CBlock& block)
+bool CDrivechain::VerifyHeaderBMM(const CBlockHeader& block)
 {
-    CTxOut dataOut = block.vtx[0].vout[0];
-    LogPrintf("data script = %s\n", ScriptToAsmStr(dataOut.scriptPubKey));
-    // this->drivechain->verify_bmm(block.hashMerkleRoot, coinbase_data);
-    return false;
+    return this->drivechain->verify_header_bmm(block.hashMainBlock.GetHex(), block.hashMerkleRoot.GetHex());
+}
+
+bool CDrivechain::VerifyBlockBMM(const CBlock& block)
+{
+    CScript dataScript = block.vtx[0].vout[0].scriptPubKey;
+    std::string coinbaseData = HexStr(dataScript.begin()+1, dataScript.end());
+    return this->drivechain->verify_block_bmm(block.hashMainBlock.GetHex(), block.hashMerkleRoot.GetHex(), coinbaseData);
 }

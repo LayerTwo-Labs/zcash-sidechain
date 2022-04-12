@@ -170,16 +170,8 @@ UniValue refreshbmm(const UniValue& params, bool fHelp)
             "\nRefresh automated BMM. Basic testing implementation\n"
             "\nArguments:\n"
             "1. \"amount\"                (numeric) Amount to pay mainchain miner for including BMM request (required)\n"
-            "2. \"createnew\" true|false  (bool) Create a new BMM block if possible\n (optional, default: true)\n"
-            "3. \"prevblock\"             (string) Hash of sidechain block to build on (optional, default: chaintip)\n"
             "\nResult:\n"
-            "hash_last_main_block  (string) Hash of mainchain tip.\n"
-            "bmm_block_created     (string) Hash of new BMM block created.\n"
-            "bmm_block_submitted   (string) Hash of BMM block connected to sidechain.\n"
-            "ntxn                  (number) Number of txn in new BMM request (if created).\n"
-            "nfees                 (number) Total fees in new block (if created).\n"
-            "txid                  (string) Mainchain BMM request TXID.\n"
-            "error                 (string) Output from sidechain client.\n"
+            "[ blockhashes ]     (array) hashes of blocks generated\n"
         );
 
     if (!Params().MineBlocksOnDemand())
@@ -218,19 +210,17 @@ UniValue refreshbmm(const UniValue& params, bool fHelp)
         IncrementExtraNonce(pblocktemplate.get(), chainActive.Tip(), nExtraNonce, Params().GetConsensus());
     }
 
-    std::optional<CBlock> minedBlock = drivechain->attempt_bmm(*pblock, nAmount);
+    std::optional<CBlock> minedBlock = drivechain->AttemptBMM(*pblock, nAmount);
 
     if (minedBlock) {
-        LogPrintf("block = %s\n", minedBlock->ToString());
-        drivechain->verify_bmm(*minedBlock);
-        // CValidationState state;
-        // if (!ProcessNewBlock(state, Params(), NULL, pblock, true, NULL))
-        //     throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
-        // ++nHeight;
-        // blockHashes.push_back(pblock->GetHash().GetHex());
+        CValidationState state;
+        if (!ProcessNewBlock(state, Params(), NULL, &*minedBlock, true, NULL))
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
+        ++nHeight;
+        blockHashes.push_back(pblock->GetHash().GetHex());
 
-        // //mark miner address as important because it was used at least for one coinbase output
-        // std::visit(KeepMinerAddress(), minerAddress);
+        //mark miner address as important because it was used at least for one coinbase output
+        std::visit(KeepMinerAddress(), minerAddress);
     }
     return blockHashes;
 }

@@ -12,7 +12,7 @@
 struct MinedBlock {
     std::string block;
     uint32_t nTime;
-    uint256 hashMainchainBlock;
+    uint256 hashMainBlock;
 };
 
 class CDrivechain
@@ -22,9 +22,10 @@ private:
 
 public:
     CDrivechain(fs::path datadir, std::string rpcuser, std::string rpcpassword);
-    std::optional<CBlock> attempt_bmm(const CBlock& block, CAmount amount);
-    std::vector<uint8_t> get_coinbase_data();
-    bool verify_bmm(const CBlock& block);
+    std::optional<CBlock> AttemptBMM(const CBlock& block, CAmount amount);
+    CTxOut GetCoinbaseDataOutput();
+    bool VerifyHeaderBMM(const CBlockHeader& block);
+    bool VerifyBlockBMM(const CBlock& block);
 };
 
 #endif // BITCOIN_DRIVECHAIN_H

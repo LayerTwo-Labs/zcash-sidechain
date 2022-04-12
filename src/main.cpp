@@ -2191,10 +2191,11 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, const Consensus:
         return error("%s: Deserialize or I/O error - %s at %s", __func__, e.what(), pos.ToString());
     }
 
-    // Check the header
-    if (!(CheckEquihashSolution(&block, consensusParams) &&
-          CheckProofOfWork(block.GetHash(), block.nBits, consensusParams)))
-        return error("ReadBlockFromDisk: Errors in block header at %s", pos.ToString());
+    bool fGenesis = block.GetHash() == Params().GetConsensus().hashGenesisBlock;
+
+    // Check BMM
+    if (!fGenesis && !drivechain->VerifyBlockBMM(block))
+        return error("ReadBlockFromDisk: Block BMM errors at %s", pos.ToString());
 
     return true;
 }
@@ -4555,22 +4556,18 @@ bool CheckBlockHeader(
     const CBlockHeader& block,
     CValidationState& state,
     const CChainParams& chainparams,
-    bool fCheckPOW)
+    bool fCheckBMM)
 {
+    bool fGenesis = block.GetHash() == chainparams.GetConsensus().hashGenesisBlock;
+
     // Check block version
     if (block.nVersion < MIN_BLOCK_VERSION)
         return state.DoS(100, error("CheckBlockHeader(): block version too low"),
                          REJECT_INVALID, "version-too-low");
 
-    // Check Equihash solution is valid
-    if (fCheckPOW && !CheckEquihashSolution(&block, chainparams.GetConsensus()))
-        return state.DoS(100, error("CheckBlockHeader(): Equihash solution invalid"),
-                         REJECT_INVALID, "invalid-solution");
-
-    // Check proof of work matches claimed amount
-    if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, chainparams.GetConsensus()))
-        return state.DoS(50, error("CheckBlockHeader(): proof of work failed"),
-                         REJECT_INVALID, "high-hash");
+    if (fCheckBMM && !fGenesis && !drivechain->VerifyHeaderBMM(block))
+        return state.DoS(100, error("CheckBlockHeader(): BMM is invalid"),
+                         REJECT_INVALID, "invalid-bmm");
 
     return true;
 }
@@ -4580,15 +4577,19 @@ bool CheckBlock(const CBlock& block,
                 const CChainParams& chainparams,
                 ProofVerifier& verifier,
                 orchard::AuthValidator& orchardAuth,
-                bool fCheckPOW,
+                bool fCheckBMM,
                 bool fCheckMerkleRoot,
                 bool fCheckTransactions)
 {
     // These are checks that are independent of context.
 
-    // Check that the header is valid (particularly PoW).  This is mostly
+    // Check that the header is valid (particularly BMM).  This is mostly
     // redundant with the call in AcceptBlockHeader.
-    if (!CheckBlockHeader(block, state, chainparams, fCheckPOW))
+    if (!CheckBlockHeader(block, state, chainparams, fCheckBMM))
+        return false;
+
+    bool fGenesis = block.GetHash() == Params().GetConsensus().hashGenesisBlock;
+    if (fCheckBMM && !fGenesis && !drivechain->VerifyBlockBMM(block))
         return false;
 
     // Check the merkle root.
@@ -4764,34 +4765,35 @@ bool ContextualCheckBlock(
         }
     }
 
-    if (consensusParams.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_CANOPY)) {
-        // Funding streams are checked inside ContextualCheckTransaction.
-        // This empty conditional branch exists to enforce this ZIP 207 consensus rule:
-        //
-        //     Once the Canopy network upgrade activates, the existing consensus rule for
-        //     payment of the Founders' Reward is no longer active.
-    } else if ((nHeight > 0) && (nHeight <= consensusParams.GetLastFoundersRewardBlockHeight(nHeight))) {
-        // Coinbase transaction must include an output sending 20% of
-        // the block subsidy to a Founders' Reward script, until the last Founders'
-        // Reward block is reached, with exception of the genesis block.
-        // The last Founders' Reward block is defined as the block just before the
-        // first subsidy halving block, which occurs at halving_interval + slow_start_shift.
-        bool found = false;
+    // NOTE: Disable Founders' reward script check
+    // if (consensusParams.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_CANOPY)) {
+    //     // Funding streams are checked inside ContextualCheckTransaction.
+    //     // This empty conditional branch exists to enforce this ZIP 207 consensus rule:
+    //     //
+    //     //     Once the Canopy network upgrade activates, the existing consensus rule for
+    //     //     payment of the Founders' Reward is no longer active.
+    // } else if ((nHeight > 0) && (nHeight <= consensusParams.GetLastFoundersRewardBlockHeight(nHeight))) {
+    //     // Coinbase transaction must include an output sending 20% of
+    //     // the block subsidy to a Founders' Reward script, until the last Founders'
+    //     // Reward block is reached, with exception of the genesis block.
+    //     // The last Founders' Reward block is defined as the block just before the
+    //     // first subsidy halving block, which occurs at halving_interval + slow_start_shift.
+    //     bool found = false;
 
-        for (const CTxOut& output : block.vtx[0].vout) {
-            if (output.scriptPubKey == chainparams.GetFoundersRewardScriptAtHeight(nHeight)) {
-                if (output.nValue == (GetBlockSubsidy(nHeight, consensusParams) / 5)) {
-                    found = true;
-                    break;
-                }
-            }
-        }
+    //     for (const CTxOut& output : block.vtx[0].vout) {
+    //         if (output.scriptPubKey == chainparams.GetFoundersRewardScriptAtHeight(nHeight)) {
+    //             if (output.nValue == (GetBlockSubsidy(nHeight, consensusParams) / 5)) {
+    //                 found = true;
+    //                 break;
+    //             }
+    //         }
+    //     }
 
-        if (!found) {
-            return state.DoS(100, error("%s: founders reward missing", __func__),
-                             REJECT_INVALID, "cb-no-founders-reward");
-        }
-    }
+    //     if (!found) {
+    //         return state.DoS(100, error("%s: founders reward missing", __func__),
+    //                          REJECT_INVALID, "cb-no-founders-reward");
+    //     }
+    // }
 
     return true;
 }

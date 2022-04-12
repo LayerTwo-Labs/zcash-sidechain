@@ -1466,6 +1466,14 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             GetArg("-maxuploadtarget", DEFAULT_MAX_UPLOAD_TARGET)*1024*1024);
     }
 
+    // ********************************************************* Step 6.5: drivechain initialization
+
+    std::string rpcuser = GetArg("-rpcuser", "");
+    std::string rpcpassword = GetArg("-rpcpassword", "");
+    fs::path drivechain_dir = GetDataDir();
+    // Init drivechain object
+    drivechain.reset(new CDrivechain(drivechain_dir, rpcuser, rpcpassword));
+
     // ********************************************************* Step 7: load block chain
 
     fReindex = GetBoolArg("-reindex", false);
@@ -1823,11 +1831,6 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         threadGroup.create_thread(boost::bind(&ThreadFlushWalletDB, boost::ref(pwalletMain->strWalletFile)));
     }
 #endif
-    std::string rpcuser = GetArg("-rpcuser", "");
-    std::string rpcpassword = GetArg("-rpcpassword", "");
-    fs::path drivechain_dir = GetDataDir();
-    // Init drivechain object
-    drivechain.reset(new CDrivechain(drivechain_dir, rpcuser, rpcpassword));
 
     // SENDALERT
     threadGroup.create_thread(boost::bind(ThreadSendAlert));

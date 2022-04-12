@@ -476,13 +476,13 @@ bool ReadBlockFromDisk(CBlock& block, const CBlockIndex* pindex, const Consensus
 
 bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state,
     const CChainParams& chainparams,
-    bool fCheckPOW = true);
+    bool fCheckBMM = true);
 
 bool CheckBlock(const CBlock& block, CValidationState& state,
                 const CChainParams& chainparams,
                 ProofVerifier& verifier,
                 orchard::AuthValidator& orchardAuth,
-                bool fCheckPOW,
+                bool fCheckBMM,
                 bool fCheckMerkleRoot,
                 bool fCheckTransactions);
 

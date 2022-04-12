@@ -7,7 +7,7 @@ extern bool CheckBlock(
     CValidationState& state,
     const CChainParams& chainparams,
     libzcash::ProofVerifier& verifier,
-    bool fCheckPOW = true,
+    bool fCheckBMM = true,
     bool fCheckMerkleRoot = true);
 
 bool init_done = false;

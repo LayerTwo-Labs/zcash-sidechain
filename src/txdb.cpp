@@ -593,6 +593,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts(
                 pindexNew->nUndoPos       = diskindex.nUndoPos;
                 pindexNew->hashSproutAnchor     = diskindex.hashSproutAnchor;
                 pindexNew->nVersion       = diskindex.nVersion;
+                pindexNew->hashMainBlock  = diskindex.hashMainBlock;
                 pindexNew->hashMerkleRoot = diskindex.hashMerkleRoot;
                 pindexNew->hashBlockCommitments  = diskindex.hashBlockCommitments;
                 pindexNew->nTime          = diskindex.nTime;
@@ -615,8 +616,10 @@ bool CBlockTreeDB::LoadBlockIndexGuts(
                 if (header.GetHash() != pindexNew->GetBlockHash())
                     return error("LoadBlockIndex(): block header inconsistency detected: on-disk = %s, in-memory = %s",
                        diskindex.ToString(),  pindexNew->ToString());
-                if (!CheckProofOfWork(pindexNew->GetBlockHash(), pindexNew->nBits, Params().GetConsensus()))
-                    return error("LoadBlockIndex(): CheckProofOfWork failed: %s", pindexNew->ToString());
+                bool fGenesis = pindexNew->GetBlockHash() == Params().GetConsensus().hashGenesisBlock;
+                if (!fGenesis && !drivechain->VerifyHeaderBMM(pindexNew->GetBlockHeader()))
+                    return error("LoadBlockIndex(): VerifyHeaderBMM failed: %s", pindexNew->ToString());
+
 
                 // ZIP 221 consistency checks
                 // These checks should only be performed for block index entries marked

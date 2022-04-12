@@ -302,6 +302,7 @@ public:
 
     //! block header
     int nVersion;
+    uint256 hashMainBlock;
     uint256 hashMerkleRoot;
     uint256 hashBlockCommitments;
     unsigned int nTime;
@@ -341,6 +342,7 @@ public:
         nChainOrchardValue = std::nullopt;
 
         nVersion       = 0;
+        hashMainBlock = uint256();
         hashMerkleRoot = uint256();
         hashBlockCommitments = uint256();
         nTime          = 0;
@@ -359,6 +361,7 @@ public:
         SetNull();
 
         nVersion       = block.nVersion;
+        hashMainBlock = block.hashMainBlock;
         hashMerkleRoot = block.hashMerkleRoot;
         hashBlockCommitments = block.hashBlockCommitments;
         nTime          = block.nTime;
@@ -391,6 +394,7 @@ public:
         block.nVersion       = nVersion;
         if (pprev)
             block.hashPrevBlock = pprev->GetBlockHash();
+        block.hashMainBlock = hashMainBlock;
         block.hashMerkleRoot = hashMerkleRoot;
         block.hashBlockCommitments = hashBlockCommitments;
         block.nTime          = nTime;
@@ -428,8 +432,9 @@ public:
 
     std::string ToString() const
     {
-        return strprintf("CBlockIndex(pprev=%p, nHeight=%d, merkle=%s, hashBlock=%s)",
+        return strprintf("CBlockIndex(pprev=%p, nHeight=%d, hashMain=%s, merkle=%s, hashBlock=%s)",
             pprev, nHeight,
+            hashMainBlock.ToString(),
             hashMerkleRoot.ToString(),
             GetBlockHash().ToString());
     }
@@ -520,6 +525,7 @@ public:
         // block header
         READWRITE(this->nVersion);
         READWRITE(hashPrev);
+        READWRITE(hashMainBlock);
         READWRITE(hashMerkleRoot);
         READWRITE(hashBlockCommitments);
         READWRITE(nTime);
@@ -568,6 +574,7 @@ public:
         CBlockHeader block;
         block.nVersion        = nVersion;
         block.hashPrevBlock   = hashPrev;
+        block.hashMainBlock   = hashMainBlock;
         block.hashMerkleRoot  = hashMerkleRoot;
         block.hashBlockCommitments = hashBlockCommitments;
         block.nTime           = nTime;

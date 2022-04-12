@@ -303,14 +303,11 @@ CMutableTransaction CreateCoinbaseTransaction(const CChainParams& chainparams, C
         }
 
         // Add outputs and sign
-        std::visit(
-            AddOutputsToCoinbaseTxAndSign(mtx, chainparams, nHeight, nFees),
-            minerAddress);
+        // std::visit(
+        //     AddOutputsToCoinbaseTxAndSign(mtx, chainparams, nHeight, nFees),
+        //     minerAddress);
 
-        std::vector<uint8_t> data = drivechain->get_coinbase_data();
-        CTxOut dataOut;
-        dataOut.nValue = 0;
-        dataOut.scriptPubKey = CScript() << data;
+        CTxOut dataOut = drivechain->GetCoinbaseDataOutput();
         mtx.vout.push_back(dataOut);
 
         mtx.vin[0].scriptSig = CScript() << nHeight << OP_0;

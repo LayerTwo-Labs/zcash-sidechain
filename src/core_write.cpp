@@ -108,6 +108,11 @@ std::string ScriptToAsmStr(const CScript& script, const bool fAttemptSighashDeco
             }
         } else {
             str += GetOpName(opcode);
+            if (opcode == OP_RETURN) {
+                std::vector<unsigned char> rest(pc, script.end());
+                str += " " + HexStr(rest);
+                return str;
+            }
         }
     }
     return str;

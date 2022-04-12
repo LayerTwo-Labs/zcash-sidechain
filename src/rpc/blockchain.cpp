@@ -113,6 +113,7 @@ UniValue blockheaderToJSON(const CBlockIndex* blockindex)
     result.pushKV("confirmations", confirmations);
     result.pushKV("height", blockindex->nHeight);
     result.pushKV("version", blockindex->nVersion);
+    result.pushKV("mainhash", blockindex->hashMainBlock.GetHex());
     result.pushKV("merkleroot", blockindex->hashMerkleRoot.GetHex());
     result.pushKV("finalsaplingroot", blockindex->hashFinalSaplingRoot.GetHex());
     result.pushKV("time", (int64_t)blockindex->nTime);
