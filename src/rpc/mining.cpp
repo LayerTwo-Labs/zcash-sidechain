@@ -174,8 +174,21 @@ UniValue refreshbmm(const UniValue& params, bool fHelp)
             "[ blockhashes ]     (array) hashes of blocks generated\n"
         );
 
-    if (!Params().MineBlocksOnDemand())
-        throw JSONRPCError(RPC_METHOD_NOT_FOUND, "This method can only be used on regtest");
+    UniValue blockHashes(UniValue::VARR);
+    // If we already have a mined block
+    std::optional<CBlock> minedBlock = drivechain->ConfirmBMM();
+    if (minedBlock) {
+        CValidationState state;
+        if (!ProcessNewBlock(state, Params(), NULL, &*minedBlock, true, NULL))
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
+        blockHashes.push_back(minedBlock->GetHash().GetHex());
+
+        // FIXME: mark the actual miner address from the block as important
+        // //mark miner address as important because it was used at least for one coinbase output
+        // std::visit(KeepMinerAddress(), minerAddress);
+
+        return blockHashes;
+    }
 
     int nHeight = 0;
     CAmount nAmount = AmountFromValue(params[0]);
@@ -199,7 +212,6 @@ UniValue refreshbmm(const UniValue& params, bool fHelp)
         nHeight = chainActive.Height();
     }
     unsigned int nExtraNonce = 0;
-    UniValue blockHashes(UniValue::VARR);
 
     std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(Params(), minerAddress));
     if (!pblocktemplate.get())
@@ -210,18 +222,8 @@ UniValue refreshbmm(const UniValue& params, bool fHelp)
         IncrementExtraNonce(pblocktemplate.get(), chainActive.Tip(), nExtraNonce, Params().GetConsensus());
     }
 
-    std::optional<CBlock> minedBlock = drivechain->AttemptBMM(*pblock, nAmount);
+    drivechain->AttemptBMM(*pblock, nAmount);
 
-    if (minedBlock) {
-        CValidationState state;
-        if (!ProcessNewBlock(state, Params(), NULL, &*minedBlock, true, NULL))
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
-        ++nHeight;
-        blockHashes.push_back(pblock->GetHash().GetHex());
-
-        //mark miner address as important because it was used at least for one coinbase output
-        std::visit(KeepMinerAddress(), minerAddress);
-    }
     return blockHashes;
 }
 

@@ -22,10 +22,13 @@ private:
 
 public:
     CDrivechain(fs::path datadir, std::string rpcuser, std::string rpcpassword);
-    std::optional<CBlock> AttemptBMM(const CBlock& block, CAmount amount);
-    CTxOut GetCoinbaseDataOutput();
+    std::optional<CBlock> ConfirmBMM();
+    void AttemptBMM(const CBlock& block, CAmount amount);
     bool VerifyHeaderBMM(const CBlockHeader& block);
     bool VerifyBlockBMM(const CBlock& block);
+    std::vector<CTxOut> GetCoinbaseOutputs();
+    CTxOut GetCoinbaseDataOutput(const uint256& prevSideBlockHash);
+    bool ConnectBlock(const CBlock& block, bool fJustCheck);
 };
 
 #endif // BITCOIN_DRIVECHAIN_H
