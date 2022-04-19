@@ -141,24 +141,26 @@ UniValue getnewaddress(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() > 1)
         throw runtime_error(
-            "getnewaddress ( \"\" )\n"
-            "\nReturns a new Zcash address for receiving payments.\n"
+            "getnewaddress ( deposit )\n"
+            "\nReturns a new Zcash address for receiving payments or deposits.\n"
 
             "\nArguments:\n"
-            "1. (dummy)       (string, optional) DEPRECATED. If provided, it MUST be set to the empty string \"\". Passing any other string will result in an error.\n"
+            "1. \"deposit\"      (bool, optional, default=false) If set to true new address will be formatted as a deposit address.\n"
 
             "\nResult:\n"
             "\"zcashaddress\"    (string) The new Zcash address\n"
 
             "\nExamples:\n"
             + HelpExampleCli("getnewaddress", "")
+            + HelpExampleCli("getnewaddress", "true")
             + HelpExampleRpc("getnewaddress", "")
+            + HelpExampleRpc("getnewaddress", "true")
         );
 
 
-    const UniValue& dummy_value = params[0];
-    if (!dummy_value.isNull() && dummy_value.get_str() != "") {
-        throw JSONRPCError(RPC_INVALID_PARAMETER, "dummy first argument must be excluded or set to \"\".");
+    bool fDeposit = false;
+    if (params.size() > 0 && !params[0].isNull()) {
+        fDeposit = params[0].get_bool();
     }
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -176,7 +178,12 @@ UniValue getnewaddress(const UniValue& params, bool fHelp)
     pwalletMain->SetAddressBook(keyID, dummy_account, "receive");
 
     KeyIO keyIO(Params());
-    return keyIO.EncodeDestination(keyID);
+    std::string address = keyIO.EncodeDestination(keyID);
+    if (fDeposit) {
+        return drivechain->FormatDepositAddress(address);
+    } else {
+        return address;
+    }
 }
 
 UniValue getrawchangeaddress(const UniValue& params, bool fHelp)

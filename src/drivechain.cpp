@@ -103,3 +103,7 @@ bool CDrivechain::ConnectBlock(const CBlock& block, bool fJustCheck) {
     }
     return this->drivechain->connect_deposit_outputs(outputs, fJustCheck);
 }
+
+std::string CDrivechain::FormatDepositAddress(const std::string& address) {
+    return std::string(this->drivechain->format_deposit_address(address));
+}

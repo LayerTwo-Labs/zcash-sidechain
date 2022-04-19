@@ -29,6 +29,7 @@ public:
     std::vector<CTxOut> GetCoinbaseOutputs();
     CTxOut GetCoinbaseDataOutput(const uint256& prevSideBlockHash);
     bool ConnectBlock(const CBlock& block, bool fJustCheck);
+    std::string FormatDepositAddress(const std::string& address);
 };
 
 #endif // BITCOIN_DRIVECHAIN_H
