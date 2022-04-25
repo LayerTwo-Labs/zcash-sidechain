@@ -2917,6 +2917,11 @@ static DisconnectResult DisconnectBlock(const CBlock& block, CValidationState& s
         view.PopHistoryNode(consensusBranchId);
     }
 
+    if (!drivechain->DisconnectBlock(block)) {
+        error("DisconnectBlock(): failed to update drivechain data");
+        return DISCONNECT_FAILED;
+    }
+
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
 

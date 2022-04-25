@@ -6,6 +6,7 @@
 #include "primitives/block.h"
 #include "uint256.h"
 #include "fs.h"
+#include "script/standard.h"
 #include <memory>
 #include <optional>
 
@@ -29,7 +30,9 @@ public:
     std::vector<CTxOut> GetCoinbaseOutputs();
     CTxOut GetCoinbaseDataOutput(const uint256& prevSideBlockHash);
     bool ConnectBlock(const CBlock& block, bool fJustCheck);
+    bool DisconnectBlock(const CBlock& block);
     std::string FormatDepositAddress(const std::string& address);
+    CWithdrawal CreateWithdrawalDestination(const CKeyID& refundDest, const std::string& mainDest, const CAmount& mainFee);
 };
 
 #endif // BITCOIN_DRIVECHAIN_H

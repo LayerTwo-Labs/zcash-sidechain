@@ -50,7 +50,7 @@ void CDrivechain::AttemptBMM(const CBlock& block, CAmount amount)
 
 CTxOut CDrivechain::GetCoinbaseDataOutput(const uint256& prevSideBlockHash)
 {
-    rust::Vec<uint8_t> coinbase_data = this->drivechain->get_coinbase_data(prevSideBlockHash.GetHex());
+    rust::Vec<unsigned char> coinbase_data = this->drivechain->get_coinbase_data(prevSideBlockHash.GetHex());
     CTxOut dataOut;
     dataOut.nValue = 0;
     dataOut.scriptPubKey = CScript(OP_RETURN) + CScript(&*coinbase_data.begin(), &*coinbase_data.end());
@@ -102,6 +102,25 @@ bool CDrivechain::ConnectBlock(const CBlock& block, bool fJustCheck) {
         outputs.push_back(out);
     }
     return this->drivechain->connect_deposit_outputs(outputs, fJustCheck);
+}
+
+bool CDrivechain::DisconnectBlock(const CBlock& block) {
+    const bool fJustCheck = false;
+    KeyIO keyIO(Params());
+    rust::Vec<Output> outputs;
+    for (auto txout = block.vtx[0].vout.begin()+1; txout < block.vtx[0].vout.end(); ++txout) {
+        CTxDestination dest;
+        if (!ExtractDestination(txout->scriptPubKey, dest)) {
+            LogPrintf("failed to extract destination\n");
+            return false;
+        }
+        std::string address = keyIO.EncodeDestination(dest);
+        Output out;
+        out.address = address;
+        out.amount = txout->nValue;
+        outputs.push_back(out);
+    }
+    return this->drivechain->disconnect_deposit_outputs(outputs, fJustCheck);
 }
 
 std::string CDrivechain::FormatDepositAddress(const std::string& address) {
