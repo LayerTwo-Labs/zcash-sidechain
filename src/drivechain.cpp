@@ -137,16 +137,17 @@ bool CDrivechain::ConnectBlock(const CBlock& block, bool fJustCheck) {
             }
         }
     }
-    // if (!fJustCheck) {
+    if (!fJustCheck) {
         if (!this->drivechain->connect_withdrawals(withdrawals)) {
             return false;
         }
-    // }
+    }
     return true;
 }
 
-bool CDrivechain::DisconnectBlock(const CBlock& block) {
-    const bool fJustCheck = false;
+bool CDrivechain::DisconnectBlock(const CBlock& block, bool updateIndices) {
+    LogPrintf("drivechain DisconnectBlock\n");
+    const bool fJustCheck = !updateIndices;
     KeyIO keyIO(Params());
     rust::Vec<Output> outputs;
     for (auto txout = block.vtx[0].vout.begin()+1; txout < block.vtx[0].vout.end(); ++txout) {
@@ -173,6 +174,10 @@ CWithdrawal CDrivechain::CreateWithdrawalDestination(const CKeyID& refundDest, c
     std::vector<unsigned char> vch(rustVch.begin(), rustVch.end());
     wt_blob wtData(vch);
     return CWithdrawal(refundDest, wtData);
+}
+
+bool CDrivechain::Flush() {
+    return this->drivechain->flush();
 }
 
 // Collect withdrawals

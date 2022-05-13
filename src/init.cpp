@@ -264,6 +264,7 @@ void Shutdown()
     if (pTracingHandle) {
         tracing_free(pTracingHandle);
     }
+    drivechain->Flush();
 }
 
 /**
