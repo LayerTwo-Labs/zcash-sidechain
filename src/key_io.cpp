@@ -41,6 +41,12 @@ public:
         return EncodeBase58Check(data);
     }
 
+    std::string operator()(const CWithdrawal& withdrawal) const {
+        std::vector<unsigned char> data = keyConstants.Base58Prefix(KeyConstants::PUBKEY_ADDRESS);
+        data.insert(data.end(), withdrawal.keyID.begin(), withdrawal.keyID.end());
+        return EncodeBase58Check(data);
+    }
+
     std::string operator()(const CNoDestination& no) const { return {}; }
 };
 

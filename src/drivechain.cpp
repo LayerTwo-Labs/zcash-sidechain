@@ -89,6 +89,7 @@ std::vector<CTxOut> CDrivechain::GetCoinbaseOutputs()
 bool CDrivechain::ConnectBlock(const CBlock& block, bool fJustCheck) {
     KeyIO keyIO(Params());
     rust::Vec<Output> outputs;
+    // Connect deposit outputs
     for (auto txout = block.vtx[0].vout.begin()+1; txout < block.vtx[0].vout.end(); ++txout) {
         CTxDestination dest;
         if (!ExtractDestination(txout->scriptPubKey, dest)) {
@@ -101,7 +102,47 @@ bool CDrivechain::ConnectBlock(const CBlock& block, bool fJustCheck) {
         out.amount = txout->nValue;
         outputs.push_back(out);
     }
-    return this->drivechain->connect_deposit_outputs(outputs, fJustCheck);
+    if (!this->drivechain->connect_deposit_outputs(outputs, fJustCheck)) {
+        LogPrintf("failed to connect deposit outputs\n");
+        return false;
+    }
+    rust::Vec<Withdrawal> withdrawals;
+    for (auto tx = block.vtx.begin()+1; tx < block.vtx.end(); ++tx) {
+        for (int i = 0; i < tx->vout.size(); ++i) {
+            const CTxOut& out = tx->vout[i];
+            CTxDestination dest;
+            if (!ExtractDestination(out.scriptPubKey, dest)) {
+                LogPrintf("failed to extract destination\n");
+                LogPrintf("script = %s\n", ScriptToAsmStr(out.scriptPubKey));
+                return false;
+            }
+            if (std::holds_alternative<CWithdrawal>(dest)) {
+                CWithdrawal wt = std::get<CWithdrawal>(dest);
+
+                Withdrawal withdrawal;
+
+                COutPoint outpoint(tx->GetHash(), i);
+                CDataStream ssOutpoint(SER_NETWORK, PROTOCOL_VERSION);
+                ssOutpoint << outpoint;
+                std::vector outpointVec(ssOutpoint.begin(), ssOutpoint.end());
+                withdrawal.outpoint = HexStr(outpointVec);;
+
+                CDataStream ssWTData(SER_NETWORK, PROTOCOL_VERSION);
+                ssWTData << wt.wtData;
+                std::vector wtDataVec(ssWTData.begin(), ssWTData.end());
+                withdrawal.withdrawal_data = HexStr(wtDataVec);
+                withdrawal.amount = out.nValue;
+
+                withdrawals.push_back(withdrawal);
+            }
+        }
+    }
+    // if (!fJustCheck) {
+        if (!this->drivechain->connect_withdrawals(withdrawals)) {
+            return false;
+        }
+    // }
+    return true;
 }
 
 bool CDrivechain::DisconnectBlock(const CBlock& block) {
@@ -126,3 +167,17 @@ bool CDrivechain::DisconnectBlock(const CBlock& block) {
 std::string CDrivechain::FormatDepositAddress(const std::string& address) {
     return std::string(this->drivechain->format_deposit_address(address));
 }
+
+CWithdrawal CDrivechain::CreateWithdrawalDestination(const CKeyID& refundDest, const std::string& mainDest, const CAmount& mainFee) {
+    rust::Vec<unsigned char> rustVch = get_withdrawal_data(mainDest, mainFee);
+    std::vector<unsigned char> vch(rustVch.begin(), rustVch.end());
+    wt_blob wtData(vch);
+    return CWithdrawal(refundDest, wtData);
+}
+
+// Collect withdrawals
+// Mark withdrawals as spent when bundle is created
+// Mark withdrawals as unspent when bundle fails
+// Refund
+// 1. Select unspent withdrawals
+// 2. Create change for withdrawals

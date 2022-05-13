@@ -252,6 +252,25 @@ static void SendMoney(const CTxDestination &address, CAmount nValue, bool fSubtr
         throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of the wallet and coins were spent in the copy but not marked as spent here.");
 }
 
+UniValue withdraw(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+    CWithdrawal withdrawal;
+    if (!pwalletMain->GetWithdrawalDestination("2MzdnWJzpFMu42kcn9DZ2Y9EutXXgtRavXF", 10000, withdrawal)) {
+        LogPrintf("failed to create a withdrawal destination");
+    }
+    CTxDestination dest(withdrawal);
+    bool fSubtractFeeFromAmount = false;
+    CAmount nValue = 1000000;
+    CWalletTx wtxNew;
+
+    // std::string scriptAsm = ScriptToAsmStr(scriptPubKey);
+    // LogPrintf("script = %s\n", scriptAsm);
+    SendMoney(dest, nValue, fSubtractFeeFromAmount, wtxNew);
+    return wtxNew.GetHash().GetHex();
+}
+
 UniValue sendtoaddress(const UniValue& params, bool fHelp)
 {
     if (!EnsureWalletIsAvailable(fHelp))
@@ -769,6 +788,56 @@ UniValue getreceivedbyaddress(const UniValue& params, bool fHelp)
     }
 
     return ValueFromAmount(nAmount);
+}
+
+UniValue getrefund(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() > 4)
+        throw runtime_error(
+            "getrefund ( \"(dummy)\" minconf includeWatchonly inZat )\n"
+            "\nReturns the server's total available refund.\n"
+            "\nArguments:\n"
+            "1. (dummy)          (string, optional) Remains for backward compatibility. Must be excluded or set to \"*\" or \"\".\n"
+            "2. minconf          (numeric, optional, default=1) Only include transactions confirmed at least this many times.\n"
+            "3. includeWatchonly (bool, optional, default=false) Also include refund in watchonly addresses (see 'importaddress')\n"
+            "4. inZat            (bool, optional, default=false) Get the result amount in " + MINOR_CURRENCY_UNIT + " (as an integer).\n"
+            "\nResult:\n"
+            "amount              (numeric) The total amount in " + CURRENCY_UNIT + "(or " + MINOR_CURRENCY_UNIT + " if inZat is true) received.\n"
+            "\nExamples:\n"
+            "\nThe total amount in the wallet\n"
+            + HelpExampleCli("getrefund", "*") +
+            "\nThe total amount in the wallet at least 5 blocks confirmed\n"
+            + HelpExampleCli("getrefund", "\"*\" 6") +
+            "\nAs a json rpc call\n"
+            + HelpExampleRpc("getrefund", "\"*\", 6")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    const UniValue& dummy_value = params[0];
+    if (!dummy_value.isNull() && dummy_value.get_str() != "*" && dummy_value.get_str() != "") {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "dummy first argument must be excluded or set to \"*\" or \"\".");
+    }
+
+    int min_depth = 0;
+    if (!params[1].isNull()) {
+        min_depth = params[1].get_int();
+    }
+
+    isminefilter filter = ISMINE_SPENDABLE;
+    if (!params[2].isNull() && params[2].get_bool()) {
+        filter = filter | ISMINE_WATCH_ONLY;
+    }
+
+    CAmount nRefund = pwalletMain->GetRefund(filter, min_depth);
+    if (!params[3].isNull() && params[3].get_bool()) {
+        return nRefund;
+    } else {
+        return ValueFromAmount(nRefund);
+    }
 }
 
 UniValue getbalance(const UniValue& params, bool fHelp)
@@ -2176,6 +2245,7 @@ UniValue listunspent(const UniValue& params, bool fHelp)
         entry.pushKV("amountZat", out.tx->vout[out.i].nValue);
         entry.pushKV("confirmations", out.nDepth);
         entry.pushKV("spendable", out.fSpendable);
+        entry.pushKV("withdrawal", out.fIsWithdrawal);
         results.push_back(entry);
     }
 
@@ -3025,6 +3095,10 @@ CAmount getBalanceTaddr(std::string transparentAddress, int minDepth=1, bool ign
         }
 
         if (ignoreUnspendable && !out.fSpendable) {
+            continue;
+        }
+
+        if (out.fIsWithdrawal) {
             continue;
         }
 
@@ -4239,7 +4313,7 @@ UniValue z_shieldcoinbase(const UniValue& params, bool fHelp)
 
     // Find unspent coinbase utxos and update estimated size
     for (const COutput& out : vecOutputs) {
-        if (!out.fSpendable) {
+        if (!out.fSpendable || out.fIsWithdrawal) {
             continue;
         }
 
@@ -4566,7 +4640,7 @@ UniValue z_mergetoaddress(const UniValue& params, bool fHelp)
 
         // Find unspent utxos and update estimated size
         for (const COutput& out : vecOutputs) {
-            if (!out.fSpendable) {
+            if (!out.fSpendable || out.fIsWithdrawal) {
                 continue;
             }
 
@@ -4886,6 +4960,8 @@ static const CRPCCommand commands[] =
     { "wallet",             "dumpwallet",               &dumpwallet,               true  },
     { "wallet",             "encryptwallet",            &encryptwallet,            true  },
     { "wallet",             "getbalance",               &getbalance,               false },
+    { "wallet",             "getrefund",                &getrefund,                false },
+    { "wallet",             "withdraw",                 &withdraw,                 false },
     { "wallet",             "getnewaddress",            &getnewaddress,            true  },
     { "wallet",             "getrawchangeaddress",      &getrawchangeaddress,      true  },
     { "wallet",             "getreceivedbyaddress",     &getreceivedbyaddress,     false },

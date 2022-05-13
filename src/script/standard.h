@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 #include <variant>
+#include <array>
 
 static const bool DEFAULT_ACCEPT_DATACARRIER = true;
 
@@ -25,6 +26,28 @@ public:
     CScriptID() : uint160() {}
     explicit CScriptID(const CScript& in);
     CScriptID(const uint160& in) : uint160(in) {}
+};
+
+/** A 28 byte blob with concatenation of 20 byte mainchain destination and 8 byte mainchain fee amount. */
+typedef base_blob<224> wt_blob;
+
+/** A withdrawal request: refund KeyID and concat(mainchain destination, mainchain fee) encoded as 28 bytes in wtData. */
+class CWithdrawal
+{
+public:
+    CWithdrawal() : keyID(), wtData() {};
+    CWithdrawal(const uint160& keyID, const wt_blob& wtData) : keyID(keyID), wtData(wtData) {};
+    uint160 keyID;
+    wt_blob wtData;
+    friend bool operator==(const CWithdrawal &a, const CWithdrawal &b) {
+        return a.keyID == b.keyID && a.wtData == b.wtData;
+    }
+    friend bool operator!=(const CWithdrawal &a, const CWithdrawal &b) {
+        return a.keyID != b.keyID || a.wtData != b.wtData;
+    }
+    friend bool operator<(const CWithdrawal &a, const CWithdrawal &b) {
+        return a.keyID < b.keyID || a.wtData < b.wtData;
+    }
 };
 
 /**
@@ -61,6 +84,7 @@ enum txnouttype
     TX_SCRIPTHASH,
     TX_MULTISIG,
     TX_NULL_DATA, //!< unspendable OP_RETURN script that carries data
+    TX_WITHDRAWAL,
 };
 
 class CNoDestination {
@@ -75,9 +99,10 @@ public:
  *  * CNoDestination: no destination set
  *  * CKeyID: TX_PUBKEYHASH destination
  *  * CScriptID: TX_SCRIPTHASH destination
+ *  * CWithdrawal: TX_WITHDRAWAL destination
  *  A CTxDestination is the internal data type encoded in a bitcoin address
  */
-typedef std::variant<CNoDestination, CKeyID, CScriptID> CTxDestination;
+typedef std::variant<CNoDestination, CKeyID, CScriptID, CWithdrawal> CTxDestination;
 
 /** Check whether a CTxDestination is a CNoDestination. */
 bool IsValidDestination(const CTxDestination& dest);

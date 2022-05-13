@@ -73,6 +73,11 @@ isminetype IsMineInner(const CKeyStore& keystore, const CScript& scriptPubKey, I
         if (keystore.HaveKey(keyID))
             return ISMINE_SPENDABLE;
         break;
+    case TX_WITHDRAWAL:
+        keyID = CKeyID(uint160(vSolutions[0]));
+        if (keystore.HaveKey(keyID))
+            return ISMINE_SPENDABLE;
+        break;
     case TX_SCRIPTHASH:
     {
         CScriptID scriptID = CScriptID(uint160(vSolutions[0]));

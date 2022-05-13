@@ -601,6 +601,7 @@ public:
     };
     bool IsPayToPublicKeyHash() const;
     bool IsPayToScriptHash() const;
+    bool IsWithdrawal() const;
     ScriptType GetType() const;
     uint160 AddressHash() const;
 

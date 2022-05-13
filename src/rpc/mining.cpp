@@ -175,7 +175,7 @@ UniValue refreshbmm(const UniValue& params, bool fHelp)
         );
 
     UniValue blockHashes(UniValue::VARR);
-    // If we already have a mined block
+    // If we already have a mined block process it and return.
     std::optional<CBlock> minedBlock = drivechain->ConfirmBMM();
     if (minedBlock) {
         CValidationState state;
@@ -221,6 +221,7 @@ UniValue refreshbmm(const UniValue& params, bool fHelp)
         LOCK(cs_main);
         IncrementExtraNonce(pblocktemplate.get(), chainActive.Tip(), nExtraNonce, Params().GetConsensus());
     }
+    LogPrintf("coinbase = %s\n", pblock->vtx[0].ToString());
 
     drivechain->AttemptBMM(*pblock, nAmount);
 

@@ -30,6 +30,7 @@ const char* GetTxnOutputType(txnouttype t)
     case TX_SCRIPTHASH: return "scripthash";
     case TX_MULTISIG: return "multisig";
     case TX_NULL_DATA: return "nulldata";
+    case TX_WITHDRAWAL: return "withdrawal";
     }
     return NULL;
 }
@@ -51,6 +52,16 @@ static bool MatchPayToPubkeyHash(const CScript& script, valtype& pubkeyhash)
 {
     if (script.size() == 25 && script[0] == OP_DUP && script[1] == OP_HASH160 && script[2] == 20 && script[23] == OP_EQUALVERIFY && script[24] == OP_CHECKSIG) {
         pubkeyhash = valtype(script.begin () + 3, script.begin() + 23);
+        return true;
+    }
+    return false;
+}
+
+static bool MatchWithdrawal(const CScript& script, valtype& refundKeyHash, valtype& wtData)
+{
+    CScript p2pkh(script.begin()+30, script.end());
+    if (script.size() == 30 + 25 && script[0] == 28 && script[29] == OP_DROP && MatchPayToPubkeyHash(p2pkh, refundKeyHash)) {
+        wtData = valtype(script.begin()+1, script.begin()+29);
         return true;
     }
     return false;
@@ -96,9 +107,8 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
 
     // Provably prunable, data-carrying output
     //
-    // So long as script passes the IsUnspendable() test and all but the first
-    // byte passes the IsPushOnly() test we don't care what exactly is in the
-    // script.
+    // So long as script passes the IsUnspendable() test we don't care what
+    // exactly is in the script.
     if (scriptPubKey.size() >= 1 && scriptPubKey[0] == OP_RETURN) {
         // NOTE: In this sidechain all bytes after OP_RETURN are considered to be plain data.
         // && scriptPubKey.IsPushOnly(scriptPubKey.begin()+1)) {
@@ -116,6 +126,15 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
     if (MatchPayToPubkeyHash(scriptPubKey, data)) {
         typeRet = TX_PUBKEYHASH;
         vSolutionsRet.push_back(std::move(data));
+        return true;
+    }
+
+    std::vector<unsigned char> refundKeyHash;
+    std::vector<unsigned char> wtData;
+    if (MatchWithdrawal(scriptPubKey, refundKeyHash, wtData)) {
+        typeRet = TX_WITHDRAWAL;
+        vSolutionsRet.push_back(std::move(refundKeyHash));
+        vSolutionsRet.push_back(std::move(wtData));
         return true;
     }
 
@@ -179,6 +198,11 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
     else if (whichType == TX_SCRIPTHASH)
     {
         addressRet = CScriptID(uint160(vSolutions[0]));
+        return true;
+    }
+    else if (whichType == TX_WITHDRAWAL)
+    {
+        addressRet = CWithdrawal(uint160(vSolutions[0]), wt_blob(vSolutions[1]));
         return true;
     }
     // Multisig txns have more than one address...
@@ -248,6 +272,13 @@ public:
     bool operator()(const CScriptID &scriptID) const {
         script->clear();
         *script << OP_HASH160 << ToByteVector(scriptID) << OP_EQUAL;
+        return true;
+    }
+
+    bool operator()(const CWithdrawal &withdrawal) const {
+        script->clear();
+        std::vector<unsigned char> vch(withdrawal.wtData.begin(), withdrawal.wtData.end());
+        *script << vch << OP_DROP << OP_DUP << OP_HASH160 << ToByteVector(withdrawal.keyID) << OP_EQUALVERIFY << OP_CHECKSIG;
         return true;
     }
 };

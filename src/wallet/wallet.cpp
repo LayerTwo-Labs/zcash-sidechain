@@ -2961,6 +2961,52 @@ CAmount CWalletTx::GetImmatureCredit(bool fUseCache) const
     return 0;
 }
 
+CAmount CWalletTx::GetAvailableRefund(bool fUseCache, const isminefilter& filter) const
+{
+    if (pwallet == nullptr)
+        return 0;
+
+    // Must wait until coinbase is safely deep enough in the chain before valuing it
+    if (IsCoinBase() && GetBlocksToMaturity() > 0)
+        return 0;
+
+    CAmount* cache = nullptr;
+    bool* cache_used = nullptr;
+
+    if (filter == ISMINE_SPENDABLE) {
+        cache = &nAvailableRefundCached;
+        cache_used = &fAvailableRefundCached;
+    } else if (filter == ISMINE_WATCH_ONLY) {
+        cache = &nAvailableWatchRefundCached;
+        cache_used = &fAvailableWatchRefundCached;
+    }
+
+    if (fUseCache && cache_used && *cache_used) {
+        return *cache;
+    }
+
+    CAmount nRefund = 0;
+    uint256 hashTx = GetHash();
+    for (unsigned int i = 0; i < vout.size(); i++)
+    {
+        if (!pwallet->IsSpent(hashTx, i))
+        {
+            const CTxOut &txout = vout[i];
+            if (txout.scriptPubKey.IsWithdrawal()) {
+                nRefund += pwallet->GetCredit(txout, filter);
+            }
+            if (!MoneyRange(nRefund))
+                throw std::runtime_error("CWalletTx::GetAvailableRefund() : value out of range");
+        }
+    }
+
+    if (cache) {
+        *cache = nRefund;
+        *cache_used = true;
+    }
+    return nRefund;
+}
+
 CAmount CWalletTx::GetAvailableCredit(bool fUseCache, const isminefilter& filter) const
 {
     if (pwallet == nullptr)
@@ -2992,7 +3038,9 @@ CAmount CWalletTx::GetAvailableCredit(bool fUseCache, const isminefilter& filter
         if (!pwallet->IsSpent(hashTx, i))
         {
             const CTxOut &txout = vout[i];
-            nCredit += pwallet->GetCredit(txout, filter);
+            if (!txout.scriptPubKey.IsWithdrawal()) {
+                nCredit += pwallet->GetCredit(txout, filter);
+            }
             if (!MoneyRange(nCredit))
                 throw std::runtime_error("CWalletTx::GetAvailableCredit() : value out of range");
         }
@@ -3132,6 +3180,22 @@ void CWallet::ResendWalletTransactions(int64_t nBestBlockTime)
  * @{
  */
 
+CAmount CWallet::GetRefund(const isminefilter& filter, const int min_depth) const
+{
+    CAmount nTotal = 0;
+    {
+        LOCK2(cs_main, cs_wallet);
+        for (const auto& entry : mapWallet)
+        {
+            const CWalletTx* pcoin = &entry.second;
+            if (pcoin->IsTrusted() && pcoin->GetDepthInMainChain() >= min_depth) {
+                nTotal += pcoin->GetAvailableRefund(true, filter);
+            }
+        }
+    }
+
+    return nTotal;
+}
 
 CAmount CWallet::GetBalance(const isminefilter& filter, const int min_depth) const
 {
@@ -3291,6 +3355,7 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins,
 
                 bool isSpendable = ((mine & ISMINE_SPENDABLE) != ISMINE_NO) ||
                                     (coinControl && coinControl->fAllowWatchOnly && (mine & ISMINE_WATCH_SOLVABLE) != ISMINE_NO);
+                bool isWithdrawal = output.scriptPubKey.IsWithdrawal();
 
                 if (fOnlySpendable && !isSpendable)
                     continue;
@@ -3306,7 +3371,7 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins,
                 if (!(IsSpent(wtxid, i)) && mine != ISMINE_NO &&
                     !IsLockedCoin((*it).first, i) && (pcoin->vout[i].nValue > 0 || fIncludeZeroValue) &&
                     (!coinControl || !coinControl->HasSelected() || coinControl->fAllowOtherInputs || coinControl->IsSelected((*it).first, i)))
-                        vCoins.push_back(COutput(pcoin, i, nDepth, isSpendable, isCoinbase));
+                        vCoins.push_back(COutput(pcoin, i, nDepth, isSpendable, isCoinbase, isWithdrawal));
             }
         }
     }
@@ -3375,7 +3440,7 @@ bool CWallet::SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int
 
     for (const COutput &output : vCoins)
     {
-        if (!output.fSpendable)
+        if (!output.fSpendable || output.fIsWithdrawal)
             continue;
 
         const CWalletTx *pcoin = output.tx;
@@ -3475,7 +3540,7 @@ bool CWallet::SelectCoins(const CAmount& nTargetValue, set<pair<const CWalletTx*
     if (fShieldCoinbase && vCoinsWithCoinbase.size() > vCoinsNoCoinbase.size()) {
         CAmount value = 0;
         for (const COutput& out : vCoinsNoCoinbase) {
-            if (!out.fSpendable) {
+            if (!out.fSpendable || out.fIsWithdrawal) {
                 continue;
             }
             value += out.tx->vout[out.i].nValue;
@@ -3483,7 +3548,7 @@ bool CWallet::SelectCoins(const CAmount& nTargetValue, set<pair<const CWalletTx*
         if (value <= nTargetValue) {
             CAmount valueWithCoinbase = 0;
             for (const COutput& out : vCoinsWithCoinbase) {
-                if (!out.fSpendable) {
+                if (!out.fSpendable || out.fIsWithdrawal) {
                     continue;
                 }
                 valueWithCoinbase += out.tx->vout[out.i].nValue;
@@ -3497,7 +3562,7 @@ bool CWallet::SelectCoins(const CAmount& nTargetValue, set<pair<const CWalletTx*
     {
         for (const COutput& out : vCoins)
         {
-            if (!out.fSpendable)
+            if (!out.fSpendable || out.fIsWithdrawal)
                  continue;
             nValueRet += out.tx->vout[out.i].nValue;
             setCoinsRet.insert(make_pair(out.tx, out.i));
@@ -3958,6 +4023,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, std::optional<std::reference_
             wtxNew.RelayWalletTransaction();
         }
     }
+    LogPrintf("transaction commited.\n");
     return true;
 }
 
@@ -4427,6 +4493,16 @@ void CWallet::GetAllReserveKeys(set<CKeyID>& setAddress) const
     }
 }
 
+bool CWallet::GetWithdrawalDestination(const std::string& mainDest, const CAmount& mainFee, CWithdrawal& withdrawal)
+{
+    CPubKey refundKey;
+    if (!GetKeyFromPool(refundKey)) {
+        return false;;
+    }
+    withdrawal = drivechain->CreateWithdrawalDestination(refundKey.GetID(), mainDest, mainFee);
+    return true;
+}
+
 void CWallet::UpdatedTransaction(const uint256 &hashTx)
 {
     {
@@ -4588,6 +4664,11 @@ public:
         CScript script;
         if (keystore.GetCScript(scriptId, script))
             Process(script);
+    }
+
+    void operator()(const CWithdrawal &withdrawal) {
+        if (keystore.HaveKey(withdrawal.keyID))
+            vKeys.push_back(withdrawal.keyID);
     }
 
     void operator()(const CNoDestination &none) {}
