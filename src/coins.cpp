@@ -8,6 +8,7 @@
 #include "random.h"
 #include "version.h"
 #include "policy/fees.h"
+#include "drivechain.h"
 
 #include <assert.h>
 
@@ -1088,6 +1089,9 @@ bool CCoinsViewCache::HaveInputs(const CTransaction& tx) const
     if (!tx.IsCoinBase()) {
         for (unsigned int i = 0; i < tx.vin.size(); i++) {
             const COutPoint &prevout = tx.vin[i].prevout;
+            if (drivechain->IsOutpointSpent(prevout)) {
+                return false;
+            }
             const CCoins* coins = AccessCoins(prevout.hash);
             if (!coins || !coins->IsAvailable(prevout.n)) {
                 return false;

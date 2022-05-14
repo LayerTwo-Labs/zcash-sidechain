@@ -33,7 +33,9 @@ public:
     bool DisconnectBlock(const CBlock& block, bool updateIndices);
     std::string FormatDepositAddress(const std::string& address);
     CWithdrawal CreateWithdrawalDestination(const CKeyID& refundDest, const std::string& mainDest, const CAmount& mainFee);
+    bool IsOutpointSpent(const COutPoint& outpoint);
     bool Flush();
 };
 
+extern std::unique_ptr<CDrivechain> drivechain;
 #endif // BITCOIN_DRIVECHAIN_H

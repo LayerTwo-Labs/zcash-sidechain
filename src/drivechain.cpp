@@ -106,6 +106,7 @@ bool CDrivechain::ConnectBlock(const CBlock& block, bool fJustCheck) {
         LogPrintf("failed to connect deposit outputs\n");
         return false;
     }
+    // connect withdrawal outputs
     rust::Vec<Withdrawal> withdrawals;
     for (auto tx = block.vtx.begin()+1; tx < block.vtx.end(); ++tx) {
         for (int i = 0; i < tx->vout.size(); ++i) {
@@ -176,6 +177,13 @@ CWithdrawal CDrivechain::CreateWithdrawalDestination(const CKeyID& refundDest, c
     return CWithdrawal(refundDest, wtData);
 }
 
+bool CDrivechain::IsOutpointSpent(const COutPoint& outpoint) {
+    CDataStream ssOutpoint(SER_NETWORK, PROTOCOL_VERSION);
+    ssOutpoint << outpoint;
+    std::vector outpointVec(ssOutpoint.begin(), ssOutpoint.end());
+    return this->drivechain->is_outpoint_spent(HexStr(outpointVec));
+}
+
 bool CDrivechain::Flush() {
     return this->drivechain->flush();
 }
@@ -186,3 +194,5 @@ bool CDrivechain::Flush() {
 // Refund
 // 1. Select unspent withdrawals
 // 2. Create change for withdrawals
+
+std::unique_ptr<CDrivechain> drivechain;

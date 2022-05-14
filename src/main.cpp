@@ -62,7 +62,6 @@ using namespace std;
 
 CCriticalSection cs_main;
 
-std::unique_ptr<CDrivechain> drivechain;
 BlockMap mapBlockIndex;
 CChain chainActive;
 CBlockIndex *pindexBestHeader = NULL;

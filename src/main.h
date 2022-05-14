@@ -157,7 +157,6 @@ extern CScript COINBASE_FLAGS;
 extern CCriticalSection cs_main;
 extern CTxMemPool mempool;
 typedef boost::unordered_map<uint256, CBlockIndex*, BlockHasher> BlockMap;
-extern std::unique_ptr<CDrivechain> drivechain;
 extern BlockMap mapBlockIndex;
 extern std::optional<uint64_t> last_block_num_txs;
 extern std::optional<uint64_t> last_block_size;
