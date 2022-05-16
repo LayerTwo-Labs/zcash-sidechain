@@ -164,6 +164,31 @@ bool CDrivechain::DisconnectBlock(const CBlock& block, bool updateIndices) {
         out.amount = txout->nValue;
         outputs.push_back(out);
     }
+    if (!fJustCheck) {
+        rust::Vec<rust::String> outpoints;
+        // connect withdrawal outputs
+        rust::Vec<Withdrawal> withdrawals;
+        for (auto tx = block.vtx.begin()+1; tx < block.vtx.end(); ++tx) {
+            for (int i = 0; i < tx->vout.size(); ++i) {
+                const CTxOut& out = tx->vout[i];
+                CTxDestination dest;
+                if (!ExtractDestination(out.scriptPubKey, dest)) {
+                    LogPrintf("failed to extract destination\n");
+                    LogPrintf("script = %s\n", ScriptToAsmStr(out.scriptPubKey));
+                    return false;
+                }
+                if (std::holds_alternative<CWithdrawal>(dest)) {
+                    COutPoint outpoint(tx->GetHash(), i);
+                    CDataStream ssOutpoint(SER_NETWORK, PROTOCOL_VERSION);
+                    ssOutpoint << outpoint;
+                    std::vector outpointVec(ssOutpoint.begin(), ssOutpoint.end());
+                    outpoints.push_back(HexStr(outpointVec));
+                }
+            }
+        }
+        if (!this->drivechain->disconnect_withdrawals(outpoints))
+            return false;
+    }
     return this->drivechain->disconnect_deposit_outputs(outputs, fJustCheck);
 }
 
