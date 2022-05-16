@@ -2963,6 +2963,7 @@ CAmount CWalletTx::GetImmatureCredit(bool fUseCache) const
     return 0;
 }
 
+// FIXME: Either fix the cache or remove the cache option.
 CAmount CWalletTx::GetAvailableRefund(bool fUseCache, const isminefilter& filter) const
 {
     if (pwallet == nullptr)
@@ -3191,7 +3192,7 @@ CAmount CWallet::GetRefund(const isminefilter& filter, const int min_depth) cons
         {
             const CWalletTx* pcoin = &entry.second;
             if (pcoin->IsTrusted() && pcoin->GetDepthInMainChain() >= min_depth) {
-                nTotal += pcoin->GetAvailableRefund(true, filter);
+                nTotal += pcoin->GetAvailableRefund(false, filter);
             }
         }
     }

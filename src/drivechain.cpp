@@ -45,6 +45,7 @@ void CDrivechain::AttemptBMM(const CBlock& block, CAmount amount)
 {
     std::string block_data = EncodeHexBlk(block);
     uint256 critical_hash = block.hashMerkleRoot;
+    this->drivechain->attempt_bundle_broadcast();
     this->drivechain->attempt_bmm(critical_hash.GetHex(), block_data, amount);
 }
 
