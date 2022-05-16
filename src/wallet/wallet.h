@@ -1137,6 +1137,13 @@ public:
     bool FundTransaction(CMutableTransaction& tx, CAmount& nFeeRet, int& nChangePosRet, std::string& strFailReason, bool includeWatching);
 
     /**
+     * Create a new transaction refunding withdrawals. Withdrawal outputs are
+     * selected by SelectCoins(); And the change is sent to a new withdrawal
+     * output defined by mainchainAddress and mainchainFee
+     */
+    bool CreateRefundTransaction(const vector<CRecipient>& vecSend, const std::string& mainchainAddress, CAmount mainchainFee, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
+                                 int& nChangePosRet, std::string& strFailReason, bool sign = true);
+    /**
      * Create a new transaction paying the recipients with a set of coins
      * selected by SelectCoins(); Also create the change output, when needed
      */

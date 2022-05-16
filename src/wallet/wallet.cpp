@@ -3363,6 +3363,14 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins,
                 if (fOnlySpendable && !isSpendable)
                     continue;
 
+                if (coinControl && coinControl->fSelectWithdrawals) {
+                    if (!isWithdrawal)
+                        continue;
+                } else {
+                    if (isWithdrawal)
+                        continue;
+                }
+
                 // Filter by specific destinations if needed
                 if (onlyFilterByDests && !onlyFilterByDests->empty()) {
                     CTxDestination address;
@@ -3443,7 +3451,7 @@ bool CWallet::SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int
 
     for (const COutput &output : vCoins)
     {
-        if (!output.fSpendable || output.fIsWithdrawal)
+        if (!output.fSpendable)
             continue;
 
         const CWalletTx *pcoin = output.tx;
@@ -3543,7 +3551,7 @@ bool CWallet::SelectCoins(const CAmount& nTargetValue, set<pair<const CWalletTx*
     if (fShieldCoinbase && vCoinsWithCoinbase.size() > vCoinsNoCoinbase.size()) {
         CAmount value = 0;
         for (const COutput& out : vCoinsNoCoinbase) {
-            if (!out.fSpendable || out.fIsWithdrawal) {
+            if (!out.fSpendable) {
                 continue;
             }
             value += out.tx->vout[out.i].nValue;
@@ -3551,7 +3559,7 @@ bool CWallet::SelectCoins(const CAmount& nTargetValue, set<pair<const CWalletTx*
         if (value <= nTargetValue) {
             CAmount valueWithCoinbase = 0;
             for (const COutput& out : vCoinsWithCoinbase) {
-                if (!out.fSpendable || out.fIsWithdrawal) {
+                if (!out.fSpendable) {
                     continue;
                 }
                 valueWithCoinbase += out.tx->vout[out.i].nValue;
@@ -3565,7 +3573,7 @@ bool CWallet::SelectCoins(const CAmount& nTargetValue, set<pair<const CWalletTx*
     {
         for (const COutput& out : vCoins)
         {
-            if (!out.fSpendable || out.fIsWithdrawal)
+            if (!out.fSpendable)
                  continue;
             nValueRet += out.tx->vout[out.i].nValue;
             setCoinsRet.insert(make_pair(out.tx, out.i));
@@ -3661,6 +3669,19 @@ bool CWallet::FundTransaction(CMutableTransaction& tx, CAmount &nFeeRet, int& nC
     }
 
     return true;
+}
+
+bool CWallet::CreateRefundTransaction(const vector<CRecipient>& vecSend, const std::string& mainchainAddress, CAmount mainchainFee, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
+                                int& nChangePosRet, std::string& strFailReason, bool sign)
+{
+    CCoinControl coinControl;
+    coinControl.fSelectWithdrawals = true;
+    CWithdrawal withdrawal;
+    if (!this->GetWithdrawalDestination(mainchainAddress, mainchainFee, withdrawal)) {
+        return false;
+    }
+    coinControl.destChange = CTxDestination(withdrawal);
+    return this->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRet, nChangePosRet, strFailReason, &coinControl, sign);
 }
 
 bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,

@@ -16,6 +16,8 @@ public:
     bool fAllowOtherInputs;
     //! Includes watch only addresses which match the ISMINE_WATCH_SOLVABLE criteria
     bool fAllowWatchOnly;
+    //! If true then only select withdrawals if false only select non-withdrawals
+    bool fSelectWithdrawals;
 
     CCoinControl()
     {
@@ -27,6 +29,7 @@ public:
         destChange = CNoDestination();
         fAllowOtherInputs = false;
         fAllowWatchOnly = false;
+        fSelectWithdrawals = false;
         setSelected.clear();
     }
 
