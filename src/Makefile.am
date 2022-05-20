@@ -70,7 +70,8 @@ endif
 cargo-build: $(CARGO_CONFIGURED)
 	$(RUST_ENV_VARS) $(CARGO) build $(RUST_BUILD_OPTS) $(rust_verbose) --manifest-path $(top_srcdir)/Cargo.toml
 
-$(LIBRUSTZCASH): cargo-build
+BUILT_SOURCES=$(LIBRUSTDRIVECHAIN)
+$(LIBRUSTDRIVECHAIN): cargo-build
 
 $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
 	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -C $(@D) $(@F)
