@@ -162,6 +162,7 @@ int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned c
         return -1;
     case TX_PUBKEY:
         return 1;
+    case TX_WITHDRAWAL:
     case TX_PUBKEYHASH:
         return 2;
     case TX_MULTISIG:

@@ -107,8 +107,9 @@ bool CDrivechain::ConnectBlock(const CBlock& block, bool fJustCheck) {
         LogPrintf("failed to connect deposit outputs\n");
         return false;
     }
-    // connect withdrawal outputs
+    // connect withdrawal outputs and refunds
     rust::Vec<Withdrawal> withdrawals;
+    rust::Vec<rust::String> refunds;
     for (auto tx = block.vtx.begin()+1; tx < block.vtx.end(); ++tx) {
         for (int i = 0; i < tx->vout.size(); ++i) {
             const CTxOut& out = tx->vout[i];
@@ -138,9 +139,19 @@ bool CDrivechain::ConnectBlock(const CBlock& block, bool fJustCheck) {
                 withdrawals.push_back(withdrawal);
             }
         }
+        for (int i = 0; i < tx->vin.size(); ++i) {
+            const CTxIn& in = tx->vin[i];
+            CDataStream ssOutpoint(SER_NETWORK, PROTOCOL_VERSION);
+            ssOutpoint << in.prevout;
+            std::vector outpointVec(ssOutpoint.begin(), ssOutpoint.end());
+            refunds.push_back(HexStr(outpointVec));
+        }
     }
     if (!fJustCheck) {
         if (!this->drivechain->connect_withdrawals(withdrawals)) {
+            return false;
+        }
+        if (!this->drivechain->connect_refunds(refunds)) {
             return false;
         }
     }
@@ -165,9 +176,9 @@ bool CDrivechain::DisconnectBlock(const CBlock& block, bool updateIndices) {
         outputs.push_back(out);
     }
     if (!fJustCheck) {
-        rust::Vec<rust::String> outpoints;
+        rust::Vec<rust::String> withdrawals;
+        rust::Vec<rust::String> refunds;
         // connect withdrawal outputs
-        rust::Vec<Withdrawal> withdrawals;
         for (auto tx = block.vtx.begin()+1; tx < block.vtx.end(); ++tx) {
             for (int i = 0; i < tx->vout.size(); ++i) {
                 const CTxOut& out = tx->vout[i];
@@ -182,11 +193,20 @@ bool CDrivechain::DisconnectBlock(const CBlock& block, bool updateIndices) {
                     CDataStream ssOutpoint(SER_NETWORK, PROTOCOL_VERSION);
                     ssOutpoint << outpoint;
                     std::vector outpointVec(ssOutpoint.begin(), ssOutpoint.end());
-                    outpoints.push_back(HexStr(outpointVec));
+                    withdrawals.push_back(HexStr(outpointVec));
                 }
             }
+            for (int i = 0; i < tx->vin.size(); ++i) {
+                const CTxIn& in = tx->vin[i];
+                CDataStream ssOutpoint(SER_NETWORK, PROTOCOL_VERSION);
+                ssOutpoint << in.prevout;
+                std::vector outpointVec(ssOutpoint.begin(), ssOutpoint.end());
+                refunds.push_back(HexStr(outpointVec));
+            }
         }
-        if (!this->drivechain->disconnect_withdrawals(outpoints))
+        if (!this->drivechain->disconnect_withdrawals(withdrawals))
+            return false;
+        if (!this->drivechain->disconnect_refunds(refunds))
             return false;
     }
     return this->drivechain->disconnect_deposit_outputs(outputs, fJustCheck);
