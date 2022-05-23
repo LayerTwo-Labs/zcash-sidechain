@@ -839,6 +839,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
 
 
 bool AsyncRPCOperation_sendmany::find_utxos(bool fAcceptCoinbase, TxValues& txValues) {
+    LOCK2(cs_main, pwalletMain->cs_wallet);
     std::set<CTxDestination> destinations;
     if (!useanyutxo_) {
         destinations.insert(fromtaddr_);
