@@ -485,19 +485,24 @@ public:
     mutable bool fCreditCached;
     mutable bool fImmatureCreditCached;
     mutable bool fAvailableCreditCached;
+    mutable bool fAvailableRefundCached;
     mutable bool fWatchDebitCached;
     mutable bool fWatchCreditCached;
+    mutable bool fWatchRefundCached;
     mutable bool fImmatureWatchCreditCached;
     mutable bool fAvailableWatchCreditCached;
+    mutable bool fAvailableWatchRefundCached;
     mutable bool fChangeCached;
     mutable CAmount nDebitCached;
     mutable CAmount nCreditCached;
     mutable CAmount nImmatureCreditCached;
     mutable CAmount nAvailableCreditCached;
+    mutable CAmount nAvailableRefundCached;
     mutable CAmount nWatchDebitCached;
     mutable CAmount nWatchCreditCached;
     mutable CAmount nImmatureWatchCreditCached;
     mutable CAmount nAvailableWatchCreditCached;
+    mutable CAmount nAvailableWatchRefundCached;
     mutable CAmount nChangeCached;
 
     CWalletTx()
@@ -535,18 +540,22 @@ public:
         fCreditCached = false;
         fImmatureCreditCached = false;
         fAvailableCreditCached = false;
+        fAvailableRefundCached = false;
         fWatchDebitCached = false;
         fWatchCreditCached = false;
         fImmatureWatchCreditCached = false;
         fAvailableWatchCreditCached = false;
+        fAvailableWatchRefundCached = false;
         fChangeCached = false;
         nDebitCached = 0;
         nCreditCached = 0;
         nImmatureCreditCached = 0;
         nAvailableCreditCached = 0;
+        nAvailableRefundCached = 0;
         nWatchDebitCached = 0;
         nWatchCreditCached = 0;
         nAvailableWatchCreditCached = 0;
+        nAvailableWatchRefundCached = 0;
         nImmatureWatchCreditCached = 0;
         nChangeCached = 0;
         nOrderPos = -1;
@@ -607,9 +616,11 @@ public:
     {
         fCreditCached = false;
         fAvailableCreditCached = false;
+        fAvailableRefundCached = false;
         fWatchDebitCached = false;
         fWatchCreditCached = false;
         fAvailableWatchCreditCached = false;
+        fAvailableWatchRefundCached = false;
         fImmatureWatchCreditCached = false;
         fDebitCached = false;
         fChangeCached = false;
@@ -646,6 +657,7 @@ public:
     CAmount GetDebit(const isminefilter& filter) const;
     CAmount GetCredit(const isminefilter& filter) const;
     CAmount GetImmatureCredit(bool fUseCache=true) const;
+    CAmount GetAvailableRefund(bool fUseCache=true, const isminefilter& filter=ISMINE_SPENDABLE) const;
     CAmount GetAvailableCredit(bool fUseCache=true, const isminefilter& filter=ISMINE_SPENDABLE) const;
     CAmount GetImmatureWatchOnlyCredit(const bool fUseCache=true) const;
     CAmount GetChange() const;
@@ -714,11 +726,12 @@ public:
     const CWalletTx *tx;
     int i;
     int nDepth;
+    bool fIsWithdrawal;
     bool fSpendable;
     bool fIsCoinbase;
 
-    COutput(const CWalletTx *txIn, int iIn, int nDepthIn, bool fSpendableIn, bool fIsCoinbaseIn = false) :
-            tx(txIn), i(iIn), nDepth(nDepthIn), fSpendable(fSpendableIn), fIsCoinbase(fIsCoinbaseIn){ }
+    COutput(const CWalletTx *txIn, int iIn, int nDepthIn, bool fSpendableIn, bool fIsCoinbaseIn = false, bool fIsWithdrawalIn = false) :
+        tx(txIn), i(iIn), nDepth(nDepthIn), fSpendable(fSpendableIn), fIsCoinbase(fIsCoinbaseIn), fIsWithdrawal(fIsWithdrawalIn) { }
 
     CAmount Value() const { return tx->vout[i].nValue; }
     std::string ToString() const;
@@ -1695,6 +1708,7 @@ public:
     void ResendWalletTransactions(int64_t nBestBlockTime);
     std::vector<uint256> ResendWalletTransactionsBefore(int64_t nTime);
     CAmount GetBalance(const isminefilter& filter=ISMINE_SPENDABLE, const int min_depth=0) const;
+    CAmount GetRefund(const isminefilter& filter=ISMINE_SPENDABLE, const int min_depth=0) const;
     CAmount GetUnconfirmedBalance() const;
     CAmount GetImmatureBalance() const;
     CAmount GetUnconfirmedWatchOnlyBalance() const;
@@ -1707,6 +1721,13 @@ public:
      */
     bool FundTransaction(CMutableTransaction& tx, CAmount& nFeeRet, int& nChangePosRet, std::string& strFailReason, bool includeWatching);
 
+    /**
+     * Create a new transaction refunding withdrawals. Withdrawal outputs are
+     * selected by SelectCoins(); And the change is sent to a new withdrawal
+     * output defined by mainchainAddress and mainchainFee
+     */
+    bool CreateRefundTransaction(const vector<CRecipient>& vecSend, const std::string& mainchainAddress, CAmount mainchainFee, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
+                                 int& nChangePosRet, std::string& strFailReason, bool sign = true);
     /**
      * Create a new transaction paying the recipients with a set of coins
      * selected by SelectCoins(); Also create the change output, when needed
@@ -1771,6 +1792,8 @@ public:
     void ReturnKey(int64_t nIndex);
     int64_t GetOldestKeyPoolTime();
     void GetAllReserveKeys(std::set<CKeyID>& setAddress) const;
+
+    bool GetWithdrawalDestination(const std::string& mainDest, const CAmount& mainFee, CWithdrawal& withdrawal);
 
     std::set< std::set<CTxDestination> > GetAddressGroupings();
     std::map<CTxDestination, CAmount> GetAddressBalances();

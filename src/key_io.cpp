@@ -42,6 +42,12 @@ public:
         return EncodeBase58Check(data);
     }
 
+    std::string operator()(const CWithdrawal& withdrawal) const {
+        std::vector<unsigned char> data = keyConstants.Base58Prefix(KeyConstants::PUBKEY_ADDRESS);
+        data.insert(data.end(), withdrawal.keyID.begin(), withdrawal.keyID.end());
+        return EncodeBase58Check(data);
+    }
+
     std::string operator()(const CNoDestination& no) const { return {}; }
 };
 
@@ -480,7 +486,12 @@ std::optional<libzcash::PaymentAddress> KeyIO::DecodePaymentAddress(const std::s
         [](const CNoDestination& d) {
             std::optional<libzcash::PaymentAddress> result = std::nullopt;
             return result;
-        }
+        },
+        // A withdrawal cannot be encoded as a string
+        [](const CWithdrawal& withdrawalIn) {
+            std::optional<libzcash::PaymentAddress> result = std::nullopt;
+            return result;
+        },
     }, DecodeDestination(str));
 }
 

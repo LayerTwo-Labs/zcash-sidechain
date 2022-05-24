@@ -163,6 +163,78 @@ UniValue getgenerate(const UniValue& params, bool fHelp)
     return GetBoolArg("-gen", DEFAULT_GENERATE);
 }
 
+UniValue refreshbmm(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 1)
+        throw runtime_error(
+            "refreshbmm\n"
+            "\nRefresh automated BMM. Basic testing implementation\n"
+            "\nArguments:\n"
+            "1. \"amount\"                (numeric) Amount to pay mainchain miner for including BMM request (required)\n"
+            "\nResult:\n"
+            "[ blockhashes ]     (array) hashes of blocks generated\n"
+        );
+
+    UniValue blockHashes(UniValue::VARR);
+    // If we already have a mined block process it and return.
+    std::optional<CBlock> minedBlock = drivechain->ConfirmBMM();
+    if (minedBlock) {
+        CValidationState state;
+        if (!ProcessNewBlock(state, Params(), NULL, &*minedBlock, true, NULL))
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
+        blockHashes.push_back(minedBlock->GetHash().GetHex());
+
+        // FIXME: mark the actual miner address from the block as important
+        // //mark miner address as important because it was used at least for one coinbase output
+        // std::visit(KeepMinerAddress(), minerAddress);
+
+        return blockHashes;
+    }
+
+    int nHeight = 0;
+    CAmount nAmount = AmountFromValue(params[0]);
+
+    std::optional<MinerAddress> maybeMinerAddress;
+    GetMainSignals().AddressForMining(maybeMinerAddress);
+
+    // Throw an error if no address valid for mining was provided.
+    if (!maybeMinerAddress.has_value()) {
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "No miner address available (mining requires a wallet or -mineraddress)");
+    } else {
+        // Detect and handle keypool exhaustion separately from IsValidMinerAddress().
+        auto resv = std::get_if<boost::shared_ptr<CReserveScript>>(&maybeMinerAddress.value());
+        if (resv && !resv->get()) {
+            throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+        }
+
+        // Catch any other invalid miner address issues.
+        if (!std::visit(IsValidMinerAddress(), maybeMinerAddress.value())) {
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Miner address is invalid");
+        }
+    }
+    auto minerAddress = maybeMinerAddress.value();
+
+    {   // Don't keep cs_main locked
+        LOCK(cs_main);
+        nHeight = chainActive.Height();
+    }
+    unsigned int nExtraNonce = 0;
+
+    std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(Params(), minerAddress));
+    if (!pblocktemplate.get())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
+    CBlock *pblock = &pblocktemplate->block;
+    {
+        LOCK(cs_main);
+        IncrementExtraNonce(pblocktemplate.get(), chainActive.Tip(), nExtraNonce, Params().GetConsensus());
+    }
+    LogPrintf("coinbase = %s\n", pblock->vtx[0].ToString());
+
+    drivechain->AttemptBMM(*pblock, nAmount);
+
+    return blockHashes;
+}
+
 UniValue generate(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 1)
@@ -1063,6 +1135,7 @@ static const CRPCCommand commands[] =
     { "mining",             "getblocktemplate",       &getblocktemplate,       true  },
     { "mining",             "submitblock",            &submitblock,            true  },
     { "mining",             "getblocksubsidy",        &getblocksubsidy,        true  },
+    { "mining",             "refreshbmm",             &refreshbmm,             true  },
 
 #ifdef ENABLE_MINING
     { "generating",         "getgenerate",            &getgenerate,            true  },

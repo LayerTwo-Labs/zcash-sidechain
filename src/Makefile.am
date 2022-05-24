@@ -18,6 +18,7 @@ BITCOIN_CONFIG_INCLUDES += -I$(srcdir)/rust/include
 BITCOIN_INCLUDES += -I$(srcdir)/rust/include
 BITCOIN_INCLUDES += -I$(srcdir)/secp256k1/include
 BITCOIN_INCLUDES += -I$(srcdir)/univalue/include
+BITCOIN_INCLUDES += -I$(top_builddir)/target/$(RUST_TARGET)/cxxbridge/drivechain/src/
 
 LIBBITCOIN_SERVER=libbitcoin_server.a
 LIBBITCOIN_COMMON=libbitcoin_common.a
@@ -25,6 +26,7 @@ LIBBITCOIN_CLI=libbitcoin_cli.a
 LIBBITCOIN_UTIL=libbitcoin_util.a
 LIBBITCOIN_CRYPTO=crypto/libbitcoin_crypto.a
 LIBRUSTZCASH=$(top_builddir)/target/$(RUST_TARGET)/release/librustzcash.a
+LIBRUSTDRIVECHAIN=$(top_builddir)/target/$(RUST_TARGET)/release/librustdrivechain.a
 LIBSECP256K1=secp256k1/libsecp256k1.la
 LIBUNIVALUE=univalue/libunivalue.la
 LIBZCASH=libzcash.a
@@ -49,7 +51,8 @@ endif
 # same library as the C++ code.
 # - Note that this does not prevent the secp256k1-sys vendored code from being built; this
 #   requires https://github.com/rust-bitcoin/rust-secp256k1/issues/380 to be addressed.
-RUST_ENV_VARS = RUSTC="$(RUSTC)" TERM=dumb RUSTFLAGS="--cfg=rust_secp_no_symbol_renaming"
+#   FIXME: fix linking errors and add RUSTFLAGS="--cfg=rust_secp_no_symbol_renaming" back
+RUST_ENV_VARS = RUSTC="$(RUSTC)" TERM=dumb
 RUST_BUILD_OPTS = --release --target $(RUST_TARGET) --manifest-path $(top_srcdir)/Cargo.toml
 
 rust_verbose = $(rust_verbose_@AM_V@)
@@ -85,6 +88,9 @@ $(WALLET_TOOL_BIN): cargo-build-bins
 	$(AM_V_at)cp $(WALLET_TOOL_BUILD) $@
 
 $(LIBRUSTZCASH): cargo-build-lib
+
+BUILT_SOURCES=$(LIBRUSTDRIVECHAIN)
+$(LIBRUSTDRIVECHAIN): cargo-build-lib
 
 $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
 	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -C $(@D) $(@F)
@@ -153,6 +159,7 @@ BITCOIN_CORE_H = \
   asyncrpcqueue.h \
   base58.h \
   bech32.h \
+  bridge.rs.h \
   bloom.h \
   chain.h \
   chainparams.h \
@@ -399,6 +406,8 @@ endif
 libbitcoin_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbitcoin_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_common_a_SOURCES = \
+  drivechain.h \
+  drivechain.cpp \
   amount.cpp \
   arith_uint256.cpp \
   base58.cpp \
@@ -495,6 +504,7 @@ zcashd_LDADD = \
   $(LIBBITCOIN_CRYPTO) \
   $(LIBZCASH) \
   $(LIBRUSTZCASH) \
+  $(LIBRUSTDRIVECHAIN) \
   $(LIBLEVELDB) \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \
@@ -527,6 +537,7 @@ zcash_cli_LDADD = \
   $(EVENT_LIBS) \
   $(LIBZCASH) \
   $(LIBRUSTZCASH) \
+  $(LIBRUSTDRIVECHAIN) \
   $(LIBBITCOIN_CRYPTO) \
   $(LIBSECP256K1) \
   $(LIBZCASH_LIBS)
@@ -550,6 +561,7 @@ zcash_tx_LDADD = \
   $(LIBSECP256K1) \
   $(LIBZCASH) \
   $(LIBRUSTZCASH) \
+  $(LIBRUSTDRIVECHAIN) \
   $(LIBBITCOIN_CRYPTO) \
   $(LIBZCASH_LIBS)
 

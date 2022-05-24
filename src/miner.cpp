@@ -157,191 +157,6 @@ public:
     }
 };
 
-
-class AddOutputsToCoinbaseTxAndSign
-{
-private:
-    CMutableTransaction &mtx;
-    const CChainParams &chainparams;
-    const int nHeight;
-    const CAmount nFees;
-
-public:
-    AddOutputsToCoinbaseTxAndSign(
-        CMutableTransaction &mtx,
-        const CChainParams &chainparams,
-        const int nHeight,
-        const CAmount nFees) : mtx(mtx), chainparams(chainparams), nHeight(nHeight), nFees(nFees) {}
-
-    const libzcash::Zip212Enabled GetZip212Flag() const {
-        if (chainparams.GetConsensus().NetworkUpgradeActive(nHeight, Consensus::UPGRADE_CANOPY)) {
-            return libzcash::Zip212Enabled::AfterZip212;
-        } else {
-            return libzcash::Zip212Enabled::BeforeZip212;
-        }
-    }
-
-    CAmount SetFoundersRewardAndGetMinerValue(void* ctx) const {
-        auto block_subsidy = GetBlockSubsidy(nHeight, chainparams.GetConsensus());
-        auto miner_reward = block_subsidy; // founders' reward or funding stream amounts will be subtracted below
-
-        if (nHeight > 0) {
-            if (chainparams.GetConsensus().NetworkUpgradeActive(nHeight, Consensus::UPGRADE_CANOPY)) {
-                auto fundingStreamElements = Consensus::GetActiveFundingStreamElements(
-                    nHeight,
-                    block_subsidy,
-                    chainparams.GetConsensus());
-
-                for (Consensus::FundingStreamElement fselem : fundingStreamElements) {
-                    miner_reward -= fselem.second;
-                    bool added = std::visit(AddFundingStreamValueToTx(mtx, ctx, fselem.second, GetZip212Flag()), fselem.first);
-                    if (!added) {
-                        librustzcash_sapling_proving_ctx_free(ctx);
-                        throw new std::runtime_error("Failed to add funding stream output.");
-                    }
-                }
-            } else if (nHeight <= chainparams.GetConsensus().GetLastFoundersRewardBlockHeight(nHeight)) {
-                // Founders reward is 20% of the block subsidy
-                auto vFoundersReward = miner_reward / 5;
-                // Take some reward away from us
-                miner_reward -= vFoundersReward;
-                // And give it to the founders
-                mtx.vout.push_back(CTxOut(vFoundersReward, chainparams.GetFoundersRewardScriptAtHeight(nHeight)));
-            } else {
-                // Founders reward ends without replacement if Canopy is not activated by the
-                // last Founders' Reward block height + 1.
-            }
-        }
-
-        return miner_reward + nFees;
-    }
-
-    void ComputeBindingSig(void* saplingCtx, std::optional<orchard::UnauthorizedBundle> orchardBundle) const {
-        // Empty output script.
-        uint256 dataToBeSigned;
-        try {
-            if (orchardBundle.has_value()) {
-                // Orchard is only usable with v5+ transactions.
-                dataToBeSigned = ProduceZip244SignatureHash(mtx, {}, orchardBundle.value());
-            } else {
-                CScript scriptCode;
-                PrecomputedTransactionData txdata(mtx, {});
-                dataToBeSigned = SignatureHash(
-                    scriptCode, mtx, NOT_AN_INPUT, SIGHASH_ALL, 0,
-                    CurrentEpochBranchId(nHeight, chainparams.GetConsensus()),
-                    txdata);
-            }
-        } catch (std::logic_error ex) {
-            librustzcash_sapling_proving_ctx_free(saplingCtx);
-            throw ex;
-        }
-
-        if (orchardBundle.has_value()) {
-            auto authorizedBundle = orchardBundle.value().ProveAndSign({}, dataToBeSigned);
-            if (authorizedBundle.has_value()) {
-                mtx.orchardBundle = authorizedBundle.value();
-            } else {
-                librustzcash_sapling_proving_ctx_free(saplingCtx);
-                throw new std::runtime_error("Failed to create Orchard proof or signatures");
-            }
-        }
-
-        bool success = librustzcash_sapling_binding_sig(
-            saplingCtx,
-            mtx.valueBalanceSapling,
-            dataToBeSigned.begin(),
-            mtx.bindingSig.data());
-
-        if (!success) {
-            librustzcash_sapling_proving_ctx_free(saplingCtx);
-            throw new std::runtime_error("An error occurred computing the binding signature.");
-        }
-    }
-
-    // Create Orchard output
-    void operator()(const libzcash::OrchardRawAddress &to) const {
-        auto ctx = librustzcash_sapling_proving_ctx_init();
-
-        // `enableSpends` must be set to `false` for coinbase transactions. This
-        // means the Orchard anchor is unconstrained, so we set it to the empty
-        // tree root via a null (all zeroes) uint256.
-        uint256 orchardAnchor;
-        auto builder = orchard::Builder(false, true, orchardAnchor);
-
-        // Shielded coinbase outputs must be recoverable with an all-zeroes ovk.
-        uint256 ovk;
-        auto miner_reward = SetFoundersRewardAndGetMinerValue(ctx);
-        builder.AddOutput(ovk, to, miner_reward, std::nullopt);
-
-        // orchard::Builder pads to two Actions, but does so using a "no OVK" policy for
-        // dummy outputs, which violates coinbase rules requiring all shielded outputs to
-        // be recoverable. We manually add a dummy output to sidestep this issue.
-        // TODO: If/when we have funding streams going to Orchard recipients, this dummy
-        // output can be removed.
-        RawHDSeed rawSeed(32, 0);
-        GetRandBytes(rawSeed.data(), 32);
-        auto dummyTo = libzcash::OrchardSpendingKey::ForAccount(HDSeed(rawSeed), Params().BIP44CoinType(), 0)
-            .ToFullViewingKey()
-            .ToIncomingViewingKey()
-            .Address(0);
-        builder.AddOutput(ovk, dummyTo, 0, std::nullopt);
-
-        auto bundle = builder.Build();
-        if (!bundle.has_value()) {
-            librustzcash_sapling_proving_ctx_free(ctx);
-            throw new std::runtime_error("Failed to create shielded output for miner");
-        }
-
-        ComputeBindingSig(ctx, std::move(bundle));
-
-        librustzcash_sapling_proving_ctx_free(ctx);
-    }
-
-    // Create shielded output
-    void operator()(const libzcash::SaplingPaymentAddress &pa) const {
-        auto ctx = librustzcash_sapling_proving_ctx_init();
-
-        auto miner_reward = SetFoundersRewardAndGetMinerValue(ctx);
-        mtx.valueBalanceSapling -= miner_reward;
-
-        uint256 ovk;
-
-        auto note = libzcash::SaplingNote(pa, miner_reward, GetZip212Flag());
-        auto output = OutputDescriptionInfo(ovk, note, NO_MEMO);
-
-        auto odesc = output.Build(ctx);
-        if (!odesc) {
-            librustzcash_sapling_proving_ctx_free(ctx);
-            throw new std::runtime_error("Failed to create shielded output for miner");
-        }
-        mtx.vShieldedOutput.push_back(odesc.value());
-
-        ComputeBindingSig(ctx, std::nullopt);
-
-        librustzcash_sapling_proving_ctx_free(ctx);
-    }
-
-    // Create transparent output
-    void operator()(const boost::shared_ptr<CReserveScript> &coinbaseScript) const {
-        // Add the FR output and fetch the miner's output value.
-        auto ctx = librustzcash_sapling_proving_ctx_init();
-
-        // Miner output will be vout[0]; Founders' Reward & funding stream outputs
-        // will follow.
-        mtx.vout.resize(1);
-        auto value = SetFoundersRewardAndGetMinerValue(ctx);
-
-        // Now fill in the miner's output.
-        mtx.vout[0] = CTxOut(value, coinbaseScript->reserveScript);
-
-        if (mtx.vShieldedOutput.size() > 0) {
-            ComputeBindingSig(ctx, std::nullopt);
-        }
-
-        librustzcash_sapling_proving_ctx_free(ctx);
-    }
-};
-
 CMutableTransaction CreateCoinbaseTransaction(const CChainParams& chainparams, CAmount nFees, const MinerAddress& minerAddress, int nHeight)
 {
         CMutableTransaction mtx = CreateNewContextualCMutableTransaction(chainparams.GetConsensus(), nHeight);
@@ -357,9 +172,15 @@ CMutableTransaction CreateCoinbaseTransaction(const CChainParams& chainparams, C
         }
 
         // Add outputs and sign
-        std::visit(
-            AddOutputsToCoinbaseTxAndSign(mtx, chainparams, nHeight, nFees),
-            minerAddress);
+        // std::visit(
+        //     AddOutputsToCoinbaseTxAndSign(mtx, chainparams, nHeight, nFees),
+        //     minerAddress);
+
+
+        // Take MinerAddress and nFees as arguments.
+        std::vector<CTxOut> coinbaseOutputs = drivechain->GetCoinbaseOutputs();
+        mtx.vout.push_back(CTxOut(0, CScript()));
+        mtx.vout.insert(mtx.vout.end(), coinbaseOutputs.begin(), coinbaseOutputs.end());
 
         mtx.vin[0].scriptSig = CScript() << nHeight << OP_0;
         return mtx;
@@ -863,6 +684,8 @@ void IncrementExtraNonce(
     CMutableTransaction txCoinbase(pblock->vtx[0]);
     txCoinbase.vin[0].scriptSig = (CScript() << nHeight << CScriptNum(nExtraNonce)) + COINBASE_FLAGS;
     assert(txCoinbase.vin[0].scriptSig.size() <= 100);
+
+    txCoinbase.vout[0] = drivechain->GetCoinbaseDataOutput(pindexPrev->GetBlockHash());
 
     pblock->vtx[0] = txCoinbase;
     pblock->hashMerkleRoot = pblock->BuildMerkleTree();

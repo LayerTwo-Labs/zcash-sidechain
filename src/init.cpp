@@ -270,6 +270,7 @@ void Shutdown()
     if (pTracingHandle) {
         tracing_free(pTracingHandle);
     }
+    drivechain->Flush();
 }
 
 /**
@@ -1618,6 +1619,14 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             chainparams.GetConsensus().nPostBlossomPowTargetSpacing,
             GetArg("-maxuploadtarget", DEFAULT_MAX_UPLOAD_TARGET)*1024*1024);
     }
+
+    // ********************************************************* Step 6.5: drivechain initialization
+
+    std::string rpcuser = GetArg("-rpcuser", "");
+    std::string rpcpassword = GetArg("-rpcpassword", "");
+    fs::path drivechain_dir = GetDataDir();
+    // Init drivechain object
+    drivechain.reset(new CDrivechain(drivechain_dir, rpcuser, rpcpassword));
 
     // ********************************************************* Step 7: load block chain
 

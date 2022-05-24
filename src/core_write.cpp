@@ -109,6 +109,11 @@ std::string ScriptToAsmStr(const CScript& script, const bool fAttemptSighashDeco
             }
         } else {
             str += GetOpName(opcode);
+            if (opcode == OP_RETURN) {
+                std::vector<unsigned char> rest(pc, script.end());
+                str += " " + HexStr(rest);
+                return str;
+            }
         }
     }
     return str;
@@ -119,6 +124,13 @@ std::string EncodeHexTx(const CTransaction& tx)
     CDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
     ssTx << tx;
     return HexStr(ssTx.begin(), ssTx.end());
+}
+
+std::string EncodeHexBlk(const CBlock& block)
+{
+    CDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION);
+    ssBlock << block;
+    return HexStr(ssBlock.begin(), ssBlock.end());
 }
 
 void ScriptPubKeyToUniv(const CScript& scriptPubKey,

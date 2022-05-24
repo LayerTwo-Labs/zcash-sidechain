@@ -219,6 +219,20 @@ bool CScript::IsPayToScriptHash() const
             (*this)[22] == OP_EQUAL);
 }
 
+bool CScript::IsWithdrawal() const
+{
+    // withdrawal data check
+    return (this->size() == 30 + 25 &&
+            (*this)[0] == 28 &&
+            (*this)[29] == OP_DROP &&
+            // test for appended pay-to-pubkey-hash CScripts:
+            (*this)[30 + 0] == OP_DUP &&
+            (*this)[30 + 1] == OP_HASH160 &&
+            (*this)[30 + 2] == 0x14 &&
+            (*this)[30 + 23] == OP_EQUALVERIFY &&
+            (*this)[30 + 24] == OP_CHECKSIG);
+}
+
 bool CScript::IsPushOnly(const_iterator pc) const
 {
     while (pc < end())

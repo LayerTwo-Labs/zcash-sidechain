@@ -36,7 +36,7 @@ height.
 
 ## Getting Started
 
-Please see our [user guide](https://zcash.readthedocs.io/en/latest/rtd_pages/rtd_docs/user_guide.html) for joining the main Zcash network.
+See [zside tour](zside-tour-2022.sh) for basic instructions for testing in regtest mode.
 
 ### Need Help?
 
@@ -48,17 +48,26 @@ Please see our [user guide](https://zcash.readthedocs.io/en/latest/rtd_pages/rtd
 Participation in the Zcash project is subject to a
 [Code of Conduct](code_of_conduct.md).
 
-### Building
+### Build
 
-Build Zcash along with most dependencies from source by running the following command:
+To install all dependencies and build zcash on ubuntu run:
 
 ```
-./zcutil/build.sh -j$(nproc)
+sudo apt-get update
+sudo apt-get upgrade
+sudo apt-get install git curl
+# install nix package manager
+sh <(curl -L https://nixos.org/nix/install) --daemon
+# now follow the instructions and then close and open the terminal (to get nix initialized)
+git clone git@github.com:nchashch/zcash-sidechain.git
+cd zcash-sidechain
+nix-shell # this will install all build tools and dependencies
+./autogen.sh
+./configure $configureFlags
+make -j8 # or number of cores you want to use
 ```
 
-Currently, Zcash is only officially supported on Debian and Ubuntu. See the
-[Debian / Ubuntu build](https://zcash.readthedocs.io/en/latest/rtd_pages/Debian-Ubuntu-build.html)
-for detailed instructions.
+### 
 
 License
 -------

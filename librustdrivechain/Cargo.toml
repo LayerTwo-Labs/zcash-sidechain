@@ -1,0 +1,12 @@
+[package]
+name = "librustdrivechain"
+version = "0.0.1"
+authors = [ "Nikita Chashchinskii <nikita.chashchinskii@gmail.com>" ]
+
+
+[lib]
+name = "rustdrivechain"
+crate-type = ["staticlib"]
+
+[dependencies]
+drivechain = { git = "https://github.com/nchashch/drivechain" }
