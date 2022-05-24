@@ -1,3 +1,31 @@
+### Build from Source (Sidechain Version)
+
+To install all dependencies and build zcash-sidechain on ubuntu (22.04) run:
+
+```
+sudo apt-get update
+sudo apt-get upgrade
+sudo apt-get install git curl
+# install nix package manager
+sh <(curl -L https://nixos.org/nix/install) --daemon
+# now follow the instructions and then close and open the terminal (to get nix initialized)
+git clone git@github.com:nchashch/zcash-sidechain.git
+cd zcash-sidechain
+nix-shell # this will install all build tools and dependencies
+./autogen.sh
+./configure $configureFlags
+make -j8 # or number of cores you want to use
+```
+
+### Regtest Demo Script
+
+A script for: activating this sidechain (on [drivechain](https://github.com/drivechain-project/mainchain/)), mining blocks, depositing and withdrawing coins, generating t/z addresses and using them, is [available here](zside-tour-2022.sh).
+
+
+--------------------------
+
+
+
 Zcash 5.0.0
 <img align="right" width="120" height="80" src="doc/imgs/logo.png">
 ===========
@@ -34,11 +62,7 @@ is an automatic deprecation shutdown feature which will halt the node some
 time after this 16-week period. The automatic feature is based on block
 height.
 
-## Getting Started
-
-See [zside tour](zside-tour-2022.sh) for basic instructions for testing in regtest mode.
-
-### Need Help?
+#### Need Help?
 
 * :blue_book: See the documentation at the [ReadTheDocs](https://zcash.readthedocs.io)
   for help and more information.
@@ -48,26 +72,6 @@ See [zside tour](zside-tour-2022.sh) for basic instructions for testing in regte
 Participation in the Zcash project is subject to a
 [Code of Conduct](code_of_conduct.md).
 
-### Build
-
-To install all dependencies and build zcash on ubuntu run:
-
-```
-sudo apt-get update
-sudo apt-get upgrade
-sudo apt-get install git curl
-# install nix package manager
-sh <(curl -L https://nixos.org/nix/install) --daemon
-# now follow the instructions and then close and open the terminal (to get nix initialized)
-git clone git@github.com:nchashch/zcash-sidechain.git
-cd zcash-sidechain
-nix-shell # this will install all build tools and dependencies
-./autogen.sh
-./configure $configureFlags
-make -j8 # or number of cores you want to use
-```
-
-### 
 
 License
 -------
