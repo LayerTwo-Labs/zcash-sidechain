@@ -393,94 +393,96 @@ uint256 AsyncRPCOperation_sendmany::main_impl() {
         }
     };
 
-    std::visit(match {
-        [&](const CKeyID& keyId) {
-            allowedChangeTypes.insert(OutputPool::Transparent);
-            auto changeAddr = pwalletMain->GenerateChangeAddressForAccount(
-                    sendFromAccount_, allowedChangeTypes);
-            assert(changeAddr.has_value());
-            builder_.SendChangeTo(changeAddr.value(), ovks.first);
-        },
-        [&](const CScriptID& scriptId) {
-            allowedChangeTypes.insert(OutputPool::Transparent);
-            auto changeAddr = pwalletMain->GenerateChangeAddressForAccount(
-                    sendFromAccount_, allowedChangeTypes);
-            assert(changeAddr.has_value());
-            builder_.SendChangeTo(changeAddr.value(), ovks.first);
-        },
-        [&](const libzcash::SproutPaymentAddress& addr) {
-            // for Sprout, we return change to the originating address.
-            builder_.SendChangeToSprout(addr);
-        },
-        [&](const libzcash::SproutViewingKey& vk) {
-            // for Sprout, we return change to the originating address.
-            builder_.SendChangeToSprout(vk.address());
-        },
-        [&](const libzcash::SaplingPaymentAddress& addr) {
-            // for Sapling, if using a legacy address, return change to the
-            // originating address; otherwise return it to the Sapling internal
-            // address corresponding to the UFVK.
-            if (sendFromAccount_ == ZCASH_LEGACY_ACCOUNT) {
-                builder_.SendChangeTo(addr, ovks.first);
-            } else {
+    if (!spendable.HasTransparentCoinbase()) {
+        std::visit(match {
+            [&](const CKeyID& keyId) {
+                allowedChangeTypes.insert(OutputPool::Transparent);
                 auto changeAddr = pwalletMain->GenerateChangeAddressForAccount(
                         sendFromAccount_, allowedChangeTypes);
                 assert(changeAddr.has_value());
                 builder_.SendChangeTo(changeAddr.value(), ovks.first);
-            }
-        },
-        [&](const libzcash::SaplingExtendedFullViewingKey& fvk) {
-            // for Sapling, if using a legacy address, return change to the
-            // originating address; otherwise return it to the Sapling internal
-            // address corresponding to the UFVK.
-            if (sendFromAccount_ == ZCASH_LEGACY_ACCOUNT) {
-                builder_.SendChangeTo(fvk.DefaultAddress(), ovks.first);
-            } else {
+            },
+            [&](const CScriptID& scriptId) {
+                allowedChangeTypes.insert(OutputPool::Transparent);
                 auto changeAddr = pwalletMain->GenerateChangeAddressForAccount(
                         sendFromAccount_, allowedChangeTypes);
                 assert(changeAddr.has_value());
                 builder_.SendChangeTo(changeAddr.value(), ovks.first);
-            }
-        },
-        [&](const libzcash::UnifiedAddress& ua) {
-            allowChangeTypes(ua.GetKnownReceiverTypes());
+            },
+            [&](const libzcash::SproutPaymentAddress& addr) {
+                // for Sprout, we return change to the originating address.
+                builder_.SendChangeToSprout(addr);
+            },
+            [&](const libzcash::SproutViewingKey& vk) {
+                // for Sprout, we return change to the originating address.
+                builder_.SendChangeToSprout(vk.address());
+            },
+            [&](const libzcash::SaplingPaymentAddress& addr) {
+                // for Sapling, if using a legacy address, return change to the
+                // originating address; otherwise return it to the Sapling internal
+                // address corresponding to the UFVK.
+                if (sendFromAccount_ == ZCASH_LEGACY_ACCOUNT) {
+                    builder_.SendChangeTo(addr, ovks.first);
+                } else {
+                    auto changeAddr = pwalletMain->GenerateChangeAddressForAccount(
+                            sendFromAccount_, allowedChangeTypes);
+                    assert(changeAddr.has_value());
+                    builder_.SendChangeTo(changeAddr.value(), ovks.first);
+                }
+            },
+            [&](const libzcash::SaplingExtendedFullViewingKey& fvk) {
+                // for Sapling, if using a legacy address, return change to the
+                // originating address; otherwise return it to the Sapling internal
+                // address corresponding to the UFVK.
+                if (sendFromAccount_ == ZCASH_LEGACY_ACCOUNT) {
+                    builder_.SendChangeTo(fvk.DefaultAddress(), ovks.first);
+                } else {
+                    auto changeAddr = pwalletMain->GenerateChangeAddressForAccount(
+                            sendFromAccount_, allowedChangeTypes);
+                    assert(changeAddr.has_value());
+                    builder_.SendChangeTo(changeAddr.value(), ovks.first);
+                }
+            },
+            [&](const libzcash::UnifiedAddress& ua) {
+                allowChangeTypes(ua.GetKnownReceiverTypes());
 
-            auto zufvk = pwalletMain->GetUFVKForAddress(ua);
-            if (!zufvk.has_value()) {
-                throw JSONRPCError(
-                        RPC_WALLET_ERROR,
-                        "Could not determine full viewing key for unified address.");
-            }
+                auto zufvk = pwalletMain->GetUFVKForAddress(ua);
+                if (!zufvk.has_value()) {
+                    throw JSONRPCError(
+                            RPC_WALLET_ERROR,
+                            "Could not determine full viewing key for unified address.");
+                }
 
-            auto changeAddr = zufvk.value().GetChangeAddress(allowedChangeTypes);
-            if (!changeAddr.has_value()) {
-                throw JSONRPCError(
-                        RPC_WALLET_ERROR,
-                        "Could not generate a change address from the inferred full viewing key.");
-            }
-            builder_.SendChangeTo(changeAddr.value(), ovks.first);
-        },
-        [&](const libzcash::UnifiedFullViewingKey& fvk) {
-            allowChangeTypes(fvk.GetKnownReceiverTypes());
-            auto zufvk = ZcashdUnifiedFullViewingKey::FromUnifiedFullViewingKey(Params(), fvk);
-            auto changeAddr = zufvk.GetChangeAddress(allowedChangeTypes);
-            if (!changeAddr.has_value()) {
-                throw JSONRPCError(
-                        RPC_WALLET_ERROR,
-                        "Could not generate a change address from the specified full viewing key.");
-            }
-            builder_.SendChangeTo(changeAddr.value(), ovks.first);
-        },
-        [&](const AccountZTXOPattern& acct) {
-            allowChangeTypes(acct.GetReceiverTypes());
-            auto changeAddr = pwalletMain->GenerateChangeAddressForAccount(
-                        acct.GetAccountId(),
-                        allowedChangeTypes);
+                auto changeAddr = zufvk.value().GetChangeAddress(allowedChangeTypes);
+                if (!changeAddr.has_value()) {
+                    throw JSONRPCError(
+                            RPC_WALLET_ERROR,
+                            "Could not generate a change address from the inferred full viewing key.");
+                }
+                builder_.SendChangeTo(changeAddr.value(), ovks.first);
+            },
+            [&](const libzcash::UnifiedFullViewingKey& fvk) {
+                allowChangeTypes(fvk.GetKnownReceiverTypes());
+                auto zufvk = ZcashdUnifiedFullViewingKey::FromUnifiedFullViewingKey(Params(), fvk);
+                auto changeAddr = zufvk.GetChangeAddress(allowedChangeTypes);
+                if (!changeAddr.has_value()) {
+                    throw JSONRPCError(
+                            RPC_WALLET_ERROR,
+                            "Could not generate a change address from the specified full viewing key.");
+                }
+                builder_.SendChangeTo(changeAddr.value(), ovks.first);
+            },
+            [&](const AccountZTXOPattern& acct) {
+                allowChangeTypes(acct.GetReceiverTypes());
+                auto changeAddr = pwalletMain->GenerateChangeAddressForAccount(
+                            acct.GetAccountId(),
+                            allowedChangeTypes);
 
-            assert(changeAddr.has_value());
-            builder_.SendChangeTo(changeAddr.value(), ovks.first);
-        }
-    }, ztxoSelector_.GetPattern());
+                assert(changeAddr.has_value());
+                builder_.SendChangeTo(changeAddr.value(), ovks.first);
+            }
+        }, ztxoSelector_.GetPattern());
+    }
 
     // Track the total of notes that we've added to the builder. This
     // shouldn't strictly be necessary, given `spendable.LimitToAmount`
