@@ -30,7 +30,7 @@
 
 ### 1. Start CLI Connection
     # drivenet directory has to be next to zcash-sidechain directory
-    Main="../drivenet/bin/drivechain-cli -rpcuser=user -rpcpassword=pass -rpcport=18443 "
+    Main="./drivenet/bin/drivechain-cli -rpcuser=user -rpcpassword=pass -rpcport=18443 "
     zSide="./src/zcash-cli -rpcuser=user -rpcpassword=pass -rpcport=2048 "
 
     echo "Checking if connection works..."
