@@ -394,6 +394,7 @@ uint256 AsyncRPCOperation_sendmany::main_impl() {
     };
 
     if (!spendable.HasTransparentCoinbase()) {
+        LOCK(pwalletMain->cs_wallet);
         std::visit(match {
             [&](const CKeyID& keyId) {
                 allowedChangeTypes.insert(OutputPool::Transparent);
