@@ -5,7 +5,6 @@
 #include "key_io.h"
 
 const size_t THIS_SIDECHAIN = 0;
-const std::string KEY_HASH = "f0d112bd2156dd4d17c1ddb80f15dde4773edcfa72b9dc8465f4f4f1dbbe2ca3";
 
 CDrivechain::CDrivechain(fs::path datadir, std::string rpcuser, std::string rpcpassword)
 {
@@ -13,7 +12,6 @@ CDrivechain::CDrivechain(fs::path datadir, std::string rpcuser, std::string rpcp
     this->drivechain = new_drivechain(
                            db_path,
                            THIS_SIDECHAIN,
-                           KEY_HASH,
                            rpcuser,
                            rpcpassword)
                            .into_raw();
