@@ -34,7 +34,7 @@ public:
     std::string FormatDepositAddress(const std::string& address);
     CWithdrawal CreateWithdrawalDestination(const CKeyID& refundDest, const std::string& mainDest, const CAmount& mainFee);
     bool IsOutpointSpent(const COutPoint& outpoint);
-    bool Flush();
+    size_t Flush();
 };
 
 extern std::unique_ptr<CDrivechain> drivechain;

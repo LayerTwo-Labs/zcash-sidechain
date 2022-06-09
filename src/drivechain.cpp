@@ -228,15 +228,8 @@ bool CDrivechain::IsOutpointSpent(const COutPoint& outpoint) {
     return this->drivechain->is_outpoint_spent(HexStr(outpointVec));
 }
 
-bool CDrivechain::Flush() {
+size_t CDrivechain::Flush() {
     return this->drivechain->flush();
 }
-
-// Collect withdrawals
-// Mark withdrawals as spent when bundle is created
-// Mark withdrawals as unspent when bundle fails
-// Refund
-// 1. Select unspent withdrawals
-// 2. Create change for withdrawals
 
 std::unique_ptr<CDrivechain> drivechain;
