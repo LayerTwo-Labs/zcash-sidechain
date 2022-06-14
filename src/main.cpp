@@ -5061,9 +5061,27 @@ static bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned 
     return (nFound >= nRequired);
 }
 
+bool HandleMainchainReorg(CValidationState& state, const CChainParams& chainparams)
+{
+    LOCK(cs_main);
+    CBlockIndex* pindex = chainActive.Tip();
+    bool fGenesis = pindex->GetBlockHeader().GetHash() == chainparams.GetConsensus().hashGenesisBlock;
+    // If a mainchain block with a bmm commitment for the tip is disconnected,
+    // then we also must disconnect the tip.
+    while (!fGenesis && drivechain->VerifyHeaderBMM(pindex->GetBlockHeader()) && !drivechain->IsConnected(pindex->GetBlockHeader())) {
+        // So we invalidate the tip until we reach a block with a commitment in
+        // a mainchain block that is part of consensus.
+        InvalidateBlock(state, chainparams, pindex);
+        pindex = chainActive.Tip();
+    }
+    return ActivateBestChain(state, chainparams);
+}
 
 bool ProcessNewBlock(CValidationState& state, const CChainParams& chainparams, const CNode* pfrom, const CBlock* pblock, bool fForceProcessing, const CDiskBlockPos* dbp)
 {
+    if (!HandleMainchainReorg(state, chainparams)) {
+        return error("%s: HandleMainchainReorg FAILED", __func__);
+    }
     auto span = TracingSpan("info", "main", "ProcessNewBlock");
     auto spanGuard = span.Enter();
 

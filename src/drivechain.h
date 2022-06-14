@@ -25,6 +25,7 @@ public:
     CDrivechain(fs::path datadir, std::string rpcuser, std::string rpcpassword);
     std::optional<CBlock> ConfirmBMM();
     void AttemptBMM(const CBlock& block, CAmount amount);
+    bool IsConnected(const CBlockHeader& block);
     bool VerifyHeaderBMM(const CBlockHeader& block);
     bool VerifyBlockBMM(const CBlock& block);
     std::vector<CTxOut> GetCoinbaseOutputs();

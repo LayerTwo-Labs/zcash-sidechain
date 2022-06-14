@@ -56,6 +56,11 @@ CTxOut CDrivechain::GetCoinbaseDataOutput(const uint256& prevSideBlockHash)
     return dataOut;
 }
 
+bool CDrivechain::IsConnected(const CBlockHeader& block)
+{
+    return this->drivechain->is_main_block_connected(block.hashMainBlock.GetHex());
+}
+
 bool CDrivechain::VerifyHeaderBMM(const CBlockHeader& block)
 {
     return this->drivechain->verify_header_bmm(block.hashMainBlock.GetHex(), block.hashMerkleRoot.GetHex());

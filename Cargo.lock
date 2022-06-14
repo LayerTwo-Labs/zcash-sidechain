@@ -375,6 +375,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "chrono"
+version = "0.4.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "670ad68c9088c2a963aaa298cb369688cf3f9465ce5e2d4ca10e6e0098a1ce73"
+dependencies = [
+ "libc",
+ "num-integer",
+ "num-traits",
+ "time 0.1.43",
+ "winapi",
+]
+
+[[package]]
 name = "chunked_transfer"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -653,16 +666,18 @@ dependencies = [
 [[package]]
 name = "drivechain"
 version = "0.1.0"
-source = "git+https://github.com/nchashch/drivechain?rev=badb272337be68f01b4d00ec5345fddfbda1fefe#badb272337be68f01b4d00ec5345fddfbda1fefe"
+source = "git+https://github.com/nchashch/drivechain?rev=48e00898608d044e8b5d31ef383657a5b5b664ed#48e00898608d044e8b5d31ef383657a5b5b664ed"
 dependencies = [
  "base64",
  "bincode",
  "bitcoin",
  "byteorder",
+ "chrono",
  "color-eyre",
  "cxx",
  "cxx-build",
  "hex",
+ "log",
  "serde",
  "sha2 0.10.2",
  "sled",
@@ -1208,7 +1223,7 @@ dependencies = [
  "secrecy",
  "subtle",
  "thiserror",
- "time",
+ "time 0.3.9",
  "tracing",
  "tracing-appender",
  "tracing-core",
@@ -2268,6 +2283,16 @@ dependencies = [
 
 [[package]]
 name = "time"
+version = "0.1.43"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca8a50ef2360fbd1eeb0ecd46795a87a19024eb4b53c5dc916ca1fd95fe62438"
+dependencies = [
+ "libc",
+ "winapi",
+]
+
+[[package]]
+name = "time"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2702e08a7a860f005826c6815dcac101b19b5eb330c27fe4a5928fec1d20ddd"
@@ -2359,7 +2384,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09d48f71a791638519505cefafe162606f706c25592e4bde4d97600c0195312e"
 dependencies = [
  "crossbeam-channel",
- "time",
+ "time 0.3.9",
  "tracing-subscriber",
 ]
 
@@ -2406,7 +2431,7 @@ dependencies = [
  "regex",
  "sharded-slab",
  "thread_local",
- "time",
+ "time 0.3.9",
  "tracing",
  "tracing-core",
 ]
