@@ -49,10 +49,19 @@ void CDrivechain::AttemptBMM(const CBlock& block, CAmount amount)
 
 CTxOut CDrivechain::GetCoinbaseDataOutput(const uint256& prevSideBlockHash)
 {
-    rust::Vec<unsigned char> coinbase_data = this->drivechain->get_coinbase_data(prevSideBlockHash.GetHex());
+    rust::Vec<unsigned char> prevMainBlockHash = this->drivechain->get_mainchain_tip();
+    std::vector<unsigned char> data;
+    std::vector<unsigned char> prevSideBlockHashVch(prevSideBlockHash.begin(), prevSideBlockHash.end());
+    std::reverse(prevSideBlockHashVch.begin(), prevSideBlockHashVch.end());
+    for (const unsigned char& byte : prevMainBlockHash) {
+        data.push_back(byte);
+    }
+    for (const unsigned char& byte : prevSideBlockHashVch) {
+        data.push_back(byte);
+    }
     CTxOut dataOut;
     dataOut.nValue = 0;
-    dataOut.scriptPubKey = CScript(OP_RETURN) + CScript(&*coinbase_data.begin(), &*coinbase_data.end());
+    dataOut.scriptPubKey = CScript(OP_RETURN) + CScript(data.begin(), data.end());
     return dataOut;
 }
 
@@ -63,14 +72,26 @@ bool CDrivechain::IsConnected(const CBlockHeader& block)
 
 bool CDrivechain::VerifyHeaderBMM(const CBlockHeader& block)
 {
-    return this->drivechain->verify_header_bmm(block.hashMainBlock.GetHex(), block.hashMerkleRoot.GetHex());
+    return this->drivechain->verify_bmm(block.hashMainBlock.GetHex(), block.hashMerkleRoot.GetHex());
 }
 
 bool CDrivechain::VerifyBlockBMM(const CBlock& block)
 {
+    if (!this->VerifyHeaderBMM(block)) {
+        return false;
+    }
     CScript dataScript = block.vtx[0].vout[0].scriptPubKey;
-    std::string coinbaseData = HexStr(dataScript.begin()+1, dataScript.end());
-    return this->drivechain->verify_block_bmm(block.hashMainBlock.GetHex(), block.hashMerkleRoot.GetHex(), coinbaseData);
+    std::vector<unsigned char> prevMainBlockHash(dataScript.begin()+1, dataScript.begin()+33);
+    std::vector<unsigned char> prevSideBlockHash(dataScript.begin()+33, dataScript.end());
+    rust::Vec<unsigned char> actualPrevMainBlockHash = this->drivechain->get_prev_main_block_hash(block.hashMainBlock.GetHex());
+    std::string actualPrevSideBlockHash = block.hashPrevBlock.GetHex();
+    if (actualPrevSideBlockHash != HexStr(prevSideBlockHash)) {
+        return false;
+    }
+    if (HexStr(actualPrevMainBlockHash) != HexStr(prevMainBlockHash)) {
+        return false;
+    }
+    return true;
 }
 
 std::vector<CTxOut> CDrivechain::GetCoinbaseOutputs()
@@ -105,10 +126,6 @@ bool CDrivechain::ConnectBlock(const CBlock& block, bool fJustCheck) {
         out.address = address;
         out.amount = txout->nValue;
         outputs.push_back(out);
-    }
-    if (!this->drivechain->connect_deposit_outputs(outputs, fJustCheck)) {
-        LogPrintf("failed to connect deposit outputs\n");
-        return false;
     }
     // connect withdrawal outputs and refunds
     rust::Vec<Withdrawal> withdrawals;
@@ -150,15 +167,7 @@ bool CDrivechain::ConnectBlock(const CBlock& block, bool fJustCheck) {
             refunds.push_back(HexStr(outpointVec));
         }
     }
-    if (!fJustCheck) {
-        if (!this->drivechain->connect_withdrawals(withdrawals)) {
-            return false;
-        }
-        if (!this->drivechain->connect_refunds(refunds)) {
-            return false;
-        }
-    }
-    return true;
+    return this->drivechain->connect_block(outputs, withdrawals, refunds, fJustCheck);
 }
 
 bool CDrivechain::DisconnectBlock(const CBlock& block, bool updateIndices) {
@@ -178,41 +187,35 @@ bool CDrivechain::DisconnectBlock(const CBlock& block, bool updateIndices) {
         out.amount = txout->nValue;
         outputs.push_back(out);
     }
-    if (!fJustCheck) {
-        rust::Vec<rust::String> withdrawals;
-        rust::Vec<rust::String> refunds;
-        // connect withdrawal outputs
-        for (auto tx = block.vtx.begin()+1; tx < block.vtx.end(); ++tx) {
-            for (int i = 0; i < tx->vout.size(); ++i) {
-                const CTxOut& out = tx->vout[i];
-                CTxDestination dest;
-                if (!ExtractDestination(out.scriptPubKey, dest)) {
-                    LogPrintf("failed to extract destination\n");
-                    LogPrintf("script = %s\n", ScriptToAsmStr(out.scriptPubKey));
-                    return false;
-                }
-                if (std::holds_alternative<CWithdrawal>(dest)) {
-                    COutPoint outpoint(tx->GetHash(), i);
-                    CDataStream ssOutpoint(SER_NETWORK, PROTOCOL_VERSION);
-                    ssOutpoint << outpoint;
-                    std::vector outpointVec(ssOutpoint.begin(), ssOutpoint.end());
-                    withdrawals.push_back(HexStr(outpointVec));
-                }
+    rust::Vec<rust::String> withdrawals;
+    rust::Vec<rust::String> refunds;
+    // collect withdrawals and refund outpoints
+    for (auto tx = block.vtx.begin()+1; tx < block.vtx.end(); ++tx) {
+        for (int i = 0; i < tx->vout.size(); ++i) {
+            const CTxOut& out = tx->vout[i];
+            CTxDestination dest;
+            if (!ExtractDestination(out.scriptPubKey, dest)) {
+                LogPrintf("failed to extract destination\n");
+                LogPrintf("script = %s\n", ScriptToAsmStr(out.scriptPubKey));
+                return false;
             }
-            for (int i = 0; i < tx->vin.size(); ++i) {
-                const CTxIn& in = tx->vin[i];
+            if (std::holds_alternative<CWithdrawal>(dest)) {
+                COutPoint outpoint(tx->GetHash(), i);
                 CDataStream ssOutpoint(SER_NETWORK, PROTOCOL_VERSION);
-                ssOutpoint << in.prevout;
+                ssOutpoint << outpoint;
                 std::vector outpointVec(ssOutpoint.begin(), ssOutpoint.end());
-                refunds.push_back(HexStr(outpointVec));
+                withdrawals.push_back(HexStr(outpointVec));
             }
         }
-        if (!this->drivechain->disconnect_withdrawals(withdrawals))
-            return false;
-        if (!this->drivechain->disconnect_refunds(refunds))
-            return false;
+        for (int i = 0; i < tx->vin.size(); ++i) {
+            const CTxIn& in = tx->vin[i];
+            CDataStream ssOutpoint(SER_NETWORK, PROTOCOL_VERSION);
+            ssOutpoint << in.prevout;
+            std::vector outpointVec(ssOutpoint.begin(), ssOutpoint.end());
+            refunds.push_back(HexStr(outpointVec));
+        }
     }
-    return this->drivechain->disconnect_deposit_outputs(outputs, fJustCheck);
+    return this->drivechain->disconnect_block(outputs, withdrawals, refunds, fJustCheck);
 }
 
 std::string CDrivechain::FormatDepositAddress(const std::string& address) {
