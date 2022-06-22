@@ -19,7 +19,7 @@ pkgs.llvmPackages_13.stdenv.mkDerivation rec {
   };
 
   nativeBuildInputs = [ autoreconfHook rustup hexdump makeWrapper pkg-config ];
-  buildInputs = [ boost175 libevent libsodium utf8cpp ]
+  buildInputs = [ boost179 libevent libsodium utf8cpp ]
     ++ lib.optional withWallet db62
     ++ lib.optional withZmq zeromq;
 
@@ -40,7 +40,7 @@ pkgs.llvmPackages_13.stdenv.mkDerivation rec {
     "--enable-debug"
     "--enable-online-rust"
     "--disable-tests"
-    "--with-boost-libdir=${lib.getLib boost175}/lib"
+    "--with-boost-libdir=${lib.getLib boost179}/lib"
     "CXXFLAGS=-I${lib.getDev utf8cpp}/include/utf8cpp"
     "RUST_TARGET=${rust.toRustTargetSpec stdenv.hostPlatform}"
   ] ++ lib.optional (!withWallet) "--disable-wallet"
