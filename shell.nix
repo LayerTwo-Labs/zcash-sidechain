@@ -7,7 +7,7 @@ let
   withMining = true;
   withZmq = true;
 in
-pkgs.stdenv.mkDerivation rec {
+pkgs.llvmPackages_13.stdenv.mkDerivation rec {
   pname = "zcash";
   version = "5.0.0";
 
