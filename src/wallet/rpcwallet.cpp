@@ -266,7 +266,7 @@ UniValue getrawchangeaddress(const UniValue& params, bool fHelp)
     return keyIO.EncodeDestination(keyID);
 }
 
-static void SendRefund(const CTxDestination &address, CAmount nValue, const std::string& mainchainAddress, CAmount mainchainFee, bool fSubtractFeeFromAmount, CWalletTx& wtxNew)
+static void SendRefund(const CTxDestination &address, CAmount nValue, const std::string& mainAddress, CAmount mainFee, bool fSubtractFeeFromAmount, CWalletTx& wtxNew)
 {
     CAmount curBalance = pwalletMain->GetBalance();
 
@@ -288,7 +288,9 @@ static void SendRefund(const CTxDestination &address, CAmount nValue, const std:
     int nChangePosRet = -1;
     CRecipient recipient = {scriptPubKey, nValue, fSubtractFeeFromAmount};
     vecSend.push_back(recipient);
-    if (!pwalletMain->CreateRefundTransaction(vecSend, mainchainAddress, mainchainFee, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError)) {
+    CPubKey changeDest = pwalletMain->GenerateNewKey(false);
+    CWithdrawal withdrawal(changeDest.GetID(), mainAddress, mainFee);
+    if (!pwalletMain->CreateRefundTransaction(vecSend, withdrawal, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError)) {
         if (!fSubtractFeeFromAmount && nValue + nFeeRequired > pwalletMain->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
@@ -332,16 +334,16 @@ UniValue withdraw(const UniValue& params, bool fHelp)
 {
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
-    if (fHelp || params.size() < 3 || params.size() > 4)
+    if (fHelp || params.size() < 2 || params.size() > 4)
         throw runtime_error(
             "withdraw \"mainchainaddress\" amount ( subtractfeefromamount )\n"
             "\nWithdraw an amount to a given mainchain address. The amount is a real and is rounded to the nearest 0.00000001.\n"
             "If the withdrawal is not yet included in a bundle it can be refunded.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. \"mainchain_address\"  (string, required) The mainchain address to withdraw to.\n"
-            "2. \"amount\"      (numeric, required) The amount in " + CURRENCY_UNIT + " to withdraw. eg 0.1\n"
-            "3. \"mainchain_fee\"      (numeric, required) The mainchain fee in " + CURRENCY_UNIT + ".\n"
+            "1. \"amount\"      (numeric, required) The amount in " + CURRENCY_UNIT + " to withdraw. eg 0.1\n"
+            "2. \"mainchain_fee\"      (numeric, required) The mainchain fee in " + CURRENCY_UNIT + ".\n"
+            "3. \"mainchain_address\"  (string, optional, default=new address) The mainchain address to withdraw to.\n"
             "4. subtractfeefromamount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
             "                             The recipient will receive less Zcash than you enter in the amount field.\n"
             "\nResult:\n"
@@ -353,18 +355,21 @@ UniValue withdraw(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    std::string mainchainAddress = params[0].get_str();
-    CWithdrawal withdrawal;
-    CAmount nAmount = AmountFromValue(params[1]);
+    CAmount nAmount = AmountFromValue(params[0]);
     if (nAmount <= 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
-    CAmount nMainchainFee = AmountFromValue(params[2]);
-    if (!pwalletMain->GetWithdrawalDestination(mainchainAddress, nMainchainFee, withdrawal)) {
-        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid mainchain address or mainchain fee");
+    CAmount nMainchainFee = AmountFromValue(params[1]);
+    std::string mainAddress;
+    if (params.size() > 2) {
+        mainAddress = params[2].get_str();
+    } else {
+        mainAddress = drivechain->GetNewMainchainAddress();
     }
     bool fSubtractFeeFromAmount = false;
-    if (params.size() > 4)
-        fSubtractFeeFromAmount = params[4].get_bool();
+    if (params.size() > 3)
+        fSubtractFeeFromAmount = params[3].get_bool();
+    CPubKey refundKey = pwalletMain->GenerateNewKey(false);
+    CWithdrawal withdrawal(refundKey.GetID(), mainAddress, nMainchainFee);
     CTxDestination dest(withdrawal);
     CWalletTx wtxNew;
     EnsureWalletIsUnlocked();
@@ -376,17 +381,17 @@ UniValue refund(const UniValue& params, bool fHelp)
 {
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
-    if (fHelp || params.size() < 4 || params.size() > 5)
+    if (fHelp || params.size() < 2 || params.size() > 5)
         throw runtime_error(
             "refund \"address\" amount ( subtractfeefromamount )\n"
             "\nRefund an amount to a given mainchain address. The amount is a real and is rounded to the nearest 0.00000001.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
-            "1. \"address\"  (string, required) The Zcash address to refund to.\n"
-            "2. \"amount\"   (numeric, required) The amount in " + CURRENCY_UNIT + " to withdraw. eg 0.1\n"
-            "3. \"mainchainAddress\"    (string, required) The mainchain address for the change withdrawal.\n"
-            "4. \"mainchainFee\"        (numeric, required) The mainchain fee for the change withdrawal.\n"
-            "5. subtractfeefromamount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
+            "1. \"amount\"            (numeric, required) The amount in " + CURRENCY_UNIT + " to withdraw. eg 0.1\n"
+            "2. \"mainchainFee\"      (numeric, required) The mainchain fee for the change withdrawal.\n"
+            "3. \"mainchainAddress\"  (string, optional, default=new address) The mainchain address for the change withdrawal.\n"
+            "4. \"address\"           (string, optional, default=new address) The Zcash address to refund to.\n"
+            "5. subtractfeefromamount (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
             "                             The recipient will receive less Zcash than you enter in the amount field.\n"
             "\nResult:\n"
             "\"transactionid\"  (string) The transaction id.\n"
@@ -397,26 +402,33 @@ UniValue refund(const UniValue& params, bool fHelp)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    KeyIO keyIO(Params());
-    CTxDestination dest = keyIO.DecodeDestination(params[0].get_str());
-    if (!IsValidDestination(dest)) {
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Zcash address");
-    }
-
     // Amount
-    CAmount nAmount = AmountFromValue(params[1]);
+    CAmount nAmount = AmountFromValue(params[0]);
     if (nAmount <= 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
-    std::string mainchainAddress = params[2].get_str();
-    CAmount nMainchainFee = AmountFromValue(params[3]);
+    CAmount nMainchainFee = AmountFromValue(params[1]);
 
+    std::string mainAddress;
+    if (params.size() > 2) {
+        mainAddress = params[2].get_str();
+    } else {
+        mainAddress = drivechain->GetNewMainchainAddress();
+    }
+    KeyIO keyIO(Params());
+    CTxDestination refundDest;
+    if (params.size() > 3) {
+        auto destStr = params[3].get_str();
+        refundDest = keyIO.DecodeDestination(destStr);
+    } else {
+        refundDest = pwalletMain->GenerateNewKey(false).GetID();
+    }
     bool fSubtractFeeFromAmount = false;
     if (params.size() > 4)
         fSubtractFeeFromAmount = params[4].get_bool();
     CWalletTx wtxNew;
     EnsureWalletIsUnlocked();
-    SendRefund(dest, nAmount, mainchainAddress, nMainchainFee, fSubtractFeeFromAmount, wtxNew);
+    SendRefund(refundDest, nAmount, mainAddress, nMainchainFee, fSubtractFeeFromAmount, wtxNew);
     return wtxNew.GetHash().GetHex();
 }
 

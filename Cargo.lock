@@ -639,7 +639,6 @@ dependencies = [
 [[package]]
 name = "drivechain"
 version = "0.1.0"
-source = "git+https://github.com/nchashch/drivechain?rev=08d2b3c15a1c77f19221bb8c4a464fd8383b6617#08d2b3c15a1c77f19221bb8c4a464fd8383b6617"
 dependencies = [
  "base64",
  "bincode",

@@ -1724,9 +1724,9 @@ public:
     /**
      * Create a new transaction refunding withdrawals. Withdrawal outputs are
      * selected by SelectCoins(); And the change is sent to a new withdrawal
-     * output defined by mainchainAddress and mainchainFee
+     * output
      */
-    bool CreateRefundTransaction(const vector<CRecipient>& vecSend, const std::string& mainchainAddress, CAmount mainchainFee, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
+    bool CreateRefundTransaction(const vector<CRecipient>& vecSend, const CWithdrawal& withdrawalDest, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
                                  int& nChangePosRet, std::string& strFailReason, bool sign = true);
     /**
      * Create a new transaction paying the recipients with a set of coins
@@ -1792,8 +1792,6 @@ public:
     void ReturnKey(int64_t nIndex);
     int64_t GetOldestKeyPoolTime();
     void GetAllReserveKeys(std::set<CKeyID>& setAddress) const;
-
-    bool GetWithdrawalDestination(const std::string& mainDest, const CAmount& mainFee, CWithdrawal& withdrawal);
 
     std::set< std::set<CTxDestination> > GetAddressGroupings();
     std::map<CTxDestination, CAmount> GetAddressBalances();

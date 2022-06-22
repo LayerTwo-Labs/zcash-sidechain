@@ -44,7 +44,7 @@ public:
 
     std::string operator()(const CWithdrawal& withdrawal) const {
         std::vector<unsigned char> data = keyConstants.Base58Prefix(KeyConstants::PUBKEY_ADDRESS);
-        data.insert(data.end(), withdrawal.keyID.begin(), withdrawal.keyID.end());
+        data.insert(data.end(), withdrawal.refundKeyID.begin(), withdrawal.refundKeyID.end());
         return EncodeBase58Check(data);
     }
 

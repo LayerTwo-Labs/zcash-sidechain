@@ -147,13 +147,11 @@ bool CDrivechain::ConnectBlock(const CBlock& block, bool fJustCheck) {
                 COutPoint outpoint(tx->GetHash(), i);
                 CDataStream ssOutpoint(SER_NETWORK, PROTOCOL_VERSION);
                 ssOutpoint << outpoint;
-                std::vector outpointVec(ssOutpoint.begin(), ssOutpoint.end());
-                withdrawal.outpoint = HexStr(outpointVec);;
+                std::vector outpointVch(ssOutpoint.begin(), ssOutpoint.end());
 
-                CDataStream ssWTData(SER_NETWORK, PROTOCOL_VERSION);
-                ssWTData << wt.wtData;
-                std::vector wtDataVec(ssWTData.begin(), ssWTData.end());
-                withdrawal.withdrawal_data = HexStr(wtDataVec);
+                withdrawal.outpoint = HexStr(outpointVch);
+                withdrawal.main_address = HexStr(wt.mainAddress);
+                withdrawal.main_fee = wt.mainFee;
                 withdrawal.amount = out.nValue;
 
                 withdrawals.push_back(withdrawal);
@@ -222,11 +220,13 @@ std::string CDrivechain::FormatDepositAddress(const std::string& address) {
     return std::string(this->drivechain->format_deposit_address(address));
 }
 
-CWithdrawal CDrivechain::CreateWithdrawalDestination(const CKeyID& refundDest, const std::string& mainDest, const CAmount& mainFee) {
-    rust::Vec<unsigned char> rustVch = get_withdrawal_data(mainDest, mainFee);
-    std::vector<unsigned char> vch(rustVch.begin(), rustVch.end());
-    wt_blob wtData(vch);
-    return CWithdrawal(refundDest, wtData);
+uint160 ExtractMainAddressBytes(const std::string& address) {
+    rust::Vec<unsigned char> addressVch = extract_mainchain_address_bytes(address);
+    return uint160(std::vector(addressVch.begin(), addressVch.end()));
+}
+
+std::string CDrivechain::GetNewMainchainAddress() {
+    return std::string(this->drivechain->get_new_mainchain_address());
 }
 
 bool CDrivechain::IsOutpointSpent(const COutPoint& outpoint) {

@@ -40,6 +40,7 @@ pkgs.llvmPackages_13.stdenv.mkDerivation rec {
     "--enable-debug"
     "--enable-online-rust"
     "--disable-tests"
+    "--disable-bench"
     "--with-boost-libdir=${lib.getLib boost179}/lib"
     "CXXFLAGS=-I${lib.getDev utf8cpp}/include/utf8cpp"
     "RUST_TARGET=${rust.toRustTargetSpec stdenv.hostPlatform}"

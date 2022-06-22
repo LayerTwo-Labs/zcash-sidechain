@@ -5341,16 +5341,12 @@ bool CWallet::FundTransaction(CMutableTransaction& tx, CAmount &nFeeRet, int& nC
     return true;
 }
 
-bool CWallet::CreateRefundTransaction(const vector<CRecipient>& vecSend, const std::string& mainchainAddress, CAmount mainchainFee, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
+bool CWallet::CreateRefundTransaction(const vector<CRecipient>& vecSend, const CWithdrawal& withdrawalDest, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
                                 int& nChangePosRet, std::string& strFailReason, bool sign)
 {
     CCoinControl coinControl;
     coinControl.fSelectWithdrawals = true;
-    CWithdrawal withdrawal;
-    if (!this->GetWithdrawalDestination(mainchainAddress, mainchainFee, withdrawal)) {
-        return false;
-    }
-    coinControl.destChange = CTxDestination(withdrawal);
+    coinControl.destChange = CTxDestination(withdrawalDest);
     return this->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRet, nChangePosRet, strFailReason, &coinControl, sign);
 }
 
@@ -6174,13 +6170,6 @@ void CWallet::GetAllReserveKeys(set<CKeyID>& setAddress) const
     }
 }
 
-bool CWallet::GetWithdrawalDestination(const std::string& mainDest, const CAmount& mainFee, CWithdrawal& withdrawal)
-{
-    CPubKey refundKey = GenerateNewKey(false);
-    withdrawal = drivechain->CreateWithdrawalDestination(refundKey.GetID(), mainDest, mainFee);
-    return true;
-}
-
 void CWallet::UpdatedTransaction(const uint256 &hashTx)
 {
     {
@@ -6345,8 +6334,8 @@ public:
     }
 
     void operator()(const CWithdrawal &withdrawal) {
-        if (keystore.HaveKey(withdrawal.keyID))
-            vKeys.push_back(withdrawal.keyID);
+        if (keystore.HaveKey(withdrawal.refundKeyID))
+            vKeys.push_back(withdrawal.refundKeyID);
     }
 
     void operator()(const CNoDestination &none) {}
