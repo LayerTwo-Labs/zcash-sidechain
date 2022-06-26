@@ -41,6 +41,8 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "refund", 0 },
     { "refund", 1 },
     { "refund", 4 },
+    { "deposit", 0 },
+    { "deposit", 1 },
     { "sendtoaddress", 1 },
     { "sendtoaddress", 4 },
     { "settxfee", 0 },

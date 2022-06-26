@@ -354,6 +354,7 @@ UniValue withdraw(const UniValue& params, bool fHelp)
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
+    EnsureWalletIsBackedUp(Params());
 
     CAmount nAmount = AmountFromValue(params[0]);
     if (nAmount <= 0)
@@ -401,6 +402,7 @@ UniValue refund(const UniValue& params, bool fHelp)
         );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
+    EnsureWalletIsBackedUp(Params());
 
     // Amount
     CAmount nAmount = AmountFromValue(params[0]);
@@ -430,6 +432,45 @@ UniValue refund(const UniValue& params, bool fHelp)
     EnsureWalletIsUnlocked();
     SendRefund(refundDest, nAmount, mainAddress, nMainchainFee, fSubtractFeeFromAmount, wtxNew);
     return wtxNew.GetHash().GetHex();
+}
+
+UniValue deposit(const UniValue& params, bool fHelp) {
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+    if (fHelp || params.size() < 2 || params.size() > 3)
+        throw std::runtime_error(
+            "deposit \"depositaddress\" \"amount\" \"fee\"\n"
+            "\nCreate a sidechain deposit of an amount to a given address.\n"
+            + HelpRequiringPassphrase() +
+            "\nArguments:\n"
+            "1. \"amount\"             (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
+            "2. \"fee\"                (numeric or string, required) The fee in " + CURRENCY_UNIT + "\n"
+            "3. \"depositaddress\"     (string, optional, default=new address) The sidechain deposit address to send to.\n"
+            "\nResult:\n"
+            "\"txid\"                  (string) The transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("deposit", "0.1, 0.0001")
+            + HelpExampleRpc("deposit", "0.1, 0.0001")
+            + HelpExampleCli("deposit", "\"tmYSPLf4aMy8yQkvLSTpSyJMzXhjd8E25Jy\" 0.1, 0.0001")
+            + HelpExampleRpc("deposit", "\"tmYSPLf4aMy8yQkvLSTpSyJMzXhjd8E25Jy\", 0.1, 0.0001")
+        );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+    EnsureWalletIsBackedUp(Params());
+    CAmount nAmount = AmountFromValue(params[0]);
+    CAmount nFee = AmountFromValue(params[1]);
+    std::string address;
+    if (params.size() < 3) {
+        KeyIO keyIO(Params());
+        // Generate a new key that is added to wallet
+        CPubKey newKey = pwalletMain->GenerateNewKey(true);
+        CKeyID keyID = newKey.GetID();
+        address = keyIO.EncodeDestination(keyID);
+    } else {
+        address = params[2].get_str();
+    }
+
+    return drivechain->CreateDeposit(address, nAmount, nFee);
 }
 
 UniValue sendtoaddress(const UniValue& params, bool fHelp)
@@ -6483,6 +6524,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "getrefund",                &getrefund,                false },
     { "wallet",             "withdraw",                 &withdraw,                 false },
     { "wallet",             "refund",                   &refund,                   false },
+    { "wallet",             "deposit",                  &deposit,                  false },
     { "wallet",             "getnewaddress",            &getnewaddress,            true  },
     { "wallet",             "getrawchangeaddress",      &getrawchangeaddress,      true  },
     { "wallet",             "getreceivedbyaddress",     &getreceivedbyaddress,     false },

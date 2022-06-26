@@ -34,7 +34,7 @@ public:
     bool DisconnectBlock(const CBlock& block, bool updateIndices);
     std::string FormatDepositAddress(const std::string& address);
     std::string GetNewMainchainAddress();
-    void CreateDeposit(CKeyID keyID, CAmount amount, CAmount fee);
+    std::string CreateDeposit(std::string address, CAmount amount, CAmount fee);
     bool IsOutpointSpent(const COutPoint& outpoint);
     size_t Flush();
 };
