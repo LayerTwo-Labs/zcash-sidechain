@@ -229,6 +229,12 @@ std::string CDrivechain::GetNewMainchainAddress() {
     return std::string(this->drivechain->get_new_mainchain_address());
 }
 
+void CDrivechain::CreateDeposit(CKeyID keyID, CAmount amount, CAmount fee) {
+    KeyIO keyIO(Params());
+    std::string address = keyIO.EncodeDestination(keyID);
+    this->drivechain->create_deposit(address, amount, fee);
+}
+
 bool CDrivechain::IsOutpointSpent(const COutPoint& outpoint) {
     CDataStream ssOutpoint(SER_NETWORK, PROTOCOL_VERSION);
     ssOutpoint << outpoint;
