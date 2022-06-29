@@ -233,6 +233,15 @@ std::string CDrivechain::CreateDeposit(std::string address, CAmount amount, CAmo
     return std::string(this->drivechain->create_deposit(address, amount, fee));
 }
 
+std::optional<uint256> CDrivechain::Generate() {
+    rust::Vec<rust::String> hashes = this->drivechain->generate(1);
+    if (hashes.size() == 1) {
+        return uint256S(std::string(hashes[0]));
+    } else {
+        return std::nullopt;
+    }
+}
+
 bool CDrivechain::IsOutpointSpent(const COutPoint& outpoint) {
     CDataStream ssOutpoint(SER_NETWORK, PROTOCOL_VERSION);
     ssOutpoint << outpoint;

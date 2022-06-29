@@ -35,6 +35,7 @@ public:
     std::string FormatDepositAddress(const std::string& address);
     std::string GetNewMainchainAddress();
     std::string CreateDeposit(std::string address, CAmount amount, CAmount fee);
+    std::optional<uint256> Generate();
     bool IsOutpointSpent(const COutPoint& outpoint);
     size_t Flush();
 };

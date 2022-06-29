@@ -183,11 +183,6 @@ UniValue refreshbmm(const UniValue& params, bool fHelp)
         if (!ProcessNewBlock(state, Params(), NULL, &*minedBlock, true, NULL))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
         blockHashes.push_back(minedBlock->GetHash().GetHex());
-
-        // FIXME: mark the actual miner address from the block as important
-        // //mark miner address as important because it was used at least for one coinbase output
-        // std::visit(KeepMinerAddress(), minerAddress);
-
         return blockHashes;
     }
 
@@ -214,6 +209,9 @@ UniValue refreshbmm(const UniValue& params, bool fHelp)
     }
     auto minerAddress = maybeMinerAddress.value();
 
+    //mark miner address as important because it was used at least for one coinbase output
+    std::visit(KeepMinerAddress(), minerAddress);
+
     {   // Don't keep cs_main locked
         LOCK(cs_main);
         nHeight = chainActive.Height();
@@ -237,13 +235,14 @@ UniValue refreshbmm(const UniValue& params, bool fHelp)
 
 UniValue generate(const UniValue& params, bool fHelp)
 {
-    if (fHelp || params.size() < 1 || params.size() > 1)
+    if (fHelp || params.size() != 2)
         throw runtime_error(
             "generate numblocks\n"
             "\nMine blocks immediately (before the RPC call returns)\n"
             "\nNote: this function can only be used on the regtest network\n"
             "\nArguments:\n"
             "1. numblocks    (numeric, required) How many blocks are generated immediately.\n"
+            "2. amount       (numeric, required) Amount to pay mainchain miner for including BMM request (required)\n"
             "\nResult\n"
             "[ blockhashes ]     (array) hashes of blocks generated\n"
             "\nExamples:\n"
@@ -258,6 +257,7 @@ UniValue generate(const UniValue& params, bool fHelp)
     int nHeightEnd = 0;
     int nHeight = 0;
     int nGenerate = params[0].get_int();
+    CAmount nAmount = AmountFromValue(params[1]);
 
     std::optional<MinerAddress> maybeMinerAddress;
     GetMainSignals().AddressForMining(maybeMinerAddress);
@@ -300,43 +300,17 @@ UniValue generate(const UniValue& params, bool fHelp)
             IncrementExtraNonce(pblocktemplate.get(), chainActive.Tip(), nExtraNonce, Params().GetConsensus());
         }
 
-        // Hash state
-        eh_HashState eh_state;
-        EhInitialiseState(n, k, eh_state);
-
-        // I = the block header minus nonce and solution.
-        CEquihashInput I{*pblock};
-        CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-        ss << I;
-
-        // H(I||...
-        eh_state.Update((unsigned char*)&ss[0], ss.size());
-
-        while (true) {
-            // Yes, there is a chance every nonce could fail to satisfy the -regtest
-            // target -- 1 in 2^(2^256). That ain't gonna happen
-            pblock->nNonce = ArithToUint256(UintToArith256(pblock->nNonce) + 1);
-
-            // H(I||V||...
-            eh_HashState curr_state(eh_state);
-            curr_state.Update(pblock->nNonce.begin(), pblock->nNonce.size());
-
-            // (x_1, x_2, ...) = A(I, V, n, k)
-            std::function<bool(std::vector<unsigned char>)> validBlock =
-                    [&pblock](std::vector<unsigned char> soln) {
-                pblock->nSolution = soln;
-                solutionTargetChecks.increment();
-                return CheckProofOfWork(pblock->GetHash(), pblock->nBits, Params().GetConsensus());
-            };
-            bool found = EhBasicSolveUncancellable(n, k, curr_state, validBlock);
-            ehSolverRuns.increment();
-            if (found) {
-                goto endloop;
-            }
+        drivechain->AttemptBMM(*pblock, nAmount);
+        if (!drivechain->Generate()) {
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "failed to mine mainchain block");
         }
-endloop:
+        std::optional<CBlock> minedBlock = drivechain->ConfirmBMM();
+        if (!minedBlock) {
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "failed to confirm bmm");
+        }
+
         CValidationState state;
-        if (!ProcessNewBlock(state, Params(), NULL, pblock, true, NULL))
+        if (!ProcessNewBlock(state, Params(), NULL, &*minedBlock, true, NULL))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
         ++nHeight;
         blockHashes.push_back(pblock->GetHash().GetHex());
