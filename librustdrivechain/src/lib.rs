@@ -1,1 +1,1 @@
-extern crate drivechain;
+extern crate drivechain_cpp;

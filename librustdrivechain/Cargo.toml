@@ -9,4 +9,4 @@ name = "rustdrivechain"
 crate-type = ["staticlib"]
 
 [dependencies]
-drivechain = { git = "https://github.com/nchashch/drivechain", rev = "be0454ec99f81c82fd6b008fb914397728b3f9ff" }
+drivechain-cpp = { git = "https://github.com/nchashch/drivechain-cpp", rev = "5808a61dababbcf4878dfd746609bdc235491fa3" }
