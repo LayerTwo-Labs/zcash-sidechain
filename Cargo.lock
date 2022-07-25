@@ -650,7 +650,7 @@ dependencies = [
 [[package]]
 name = "drivechain"
 version = "0.1.0"
-source = "git+https://github.com/nchashch/drivechain?rev=07b159469a03362b1aafd7b363323e712385c1b5#07b159469a03362b1aafd7b363323e712385c1b5"
+source = "git+https://github.com/nchashch/drivechain?rev=5301b0d38273bf8a0a1aa2c42106f0283323a3e0#5301b0d38273bf8a0a1aa2c42106f0283323a3e0"
 dependencies = [
  "base64",
  "bincode",
@@ -670,7 +670,7 @@ dependencies = [
 [[package]]
 name = "drivechain-cpp"
 version = "0.1.0"
-source = "git+https://github.com/nchashch/drivechain-cpp?rev=5808a61dababbcf4878dfd746609bdc235491fa3#5808a61dababbcf4878dfd746609bdc235491fa3"
+source = "git+https://github.com/nchashch/drivechain-cpp?rev=68f29763eb8b69bbdcc2b79ed5cbe64c4f229384#68f29763eb8b69bbdcc2b79ed5cbe64c4f229384"
 dependencies = [
  "bitcoin",
  "cxx",
