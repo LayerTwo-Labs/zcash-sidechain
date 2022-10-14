@@ -2240,7 +2240,7 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, const Consensus:
     bool fGenesis = block.GetHash() == Params().GetConsensus().hashGenesisBlock;
 
     // Check BMM
-    if (!fGenesis && !drivechain->VerifyBlockBMM(block))
+    if (!fGenesis && !drivechain->VerifyBMM(block))
         return error("ReadBlockFromDisk: Block BMM errors at %s", pos.ToString());
 
     return true;
@@ -3523,7 +3523,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     int64_t nTime1 = GetTimeMicros(); nTimeConnect += nTime1 - nTimeStart;
     LogPrint("bench", "      - Connect %u transactions: %.2fms (%.3fms/tx, %.3fms/txin) [%.2fs]\n", (unsigned)block.vtx.size(), 0.001 * (nTime1 - nTimeStart), 0.001 * (nTime1 - nTimeStart) / block.vtx.size(), nInputs <= 1 ? 0 : 0.001 * (nTime1 - nTimeStart) / (nInputs-1), nTimeConnect * 0.000001);
 
-    if (!drivechain->ConnectBlock(block, fJustCheck)) {
+    if (!drivechain->ConnectBlock(view, block, fJustCheck)) {
         LogPrintf("failed to connect block");
         return state.DoS(100,
                          error("ConnectBlock(): can't update drivechain data when connecting block"),
@@ -4697,7 +4697,7 @@ bool CheckBlockHeader(
         return state.DoS(100, error("CheckBlockHeader(): block version too low"),
                          REJECT_INVALID, "version-too-low");
 
-    if (fCheckBMM && !fGenesis && !drivechain->VerifyHeaderBMM(block))
+    if (fCheckBMM && !fGenesis && !drivechain->VerifyBMM(block))
         return state.DoS(100, error("CheckBlockHeader(): BMM is invalid"),
                          REJECT_INVALID, "invalid-bmm");
 
@@ -4717,10 +4717,6 @@ bool CheckBlock(const CBlock& block,
     // Check that the header is valid (particularly BMM).  This is mostly
     // redundant with the call in AcceptBlockHeader.
     if (!CheckBlockHeader(block, state, chainparams, fCheckBMM))
-        return false;
-
-    bool fGenesis = block.GetHash() == Params().GetConsensus().hashGenesisBlock;
-    if (fCheckBMM && !fGenesis && !drivechain->VerifyBlockBMM(block))
         return false;
 
     // Check the merkle root.
@@ -5068,7 +5064,7 @@ bool HandleMainchainReorg(CValidationState& state, const CChainParams& chainpara
     bool fGenesis = pindex->GetBlockHeader().GetHash() == chainparams.GetConsensus().hashGenesisBlock;
     // If a mainchain block with a bmm commitment for the tip is disconnected,
     // then we also must disconnect the tip.
-    while (!fGenesis && drivechain->VerifyHeaderBMM(pindex->GetBlockHeader()) && !drivechain->IsConnected(pindex->GetBlockHeader())) {
+    while (!fGenesis && drivechain->VerifyBMM(pindex->GetBlockHeader()) && !drivechain->IsConnected(pindex->GetBlockHeader())) {
         // So we invalidate the tip until we reach a block with a commitment in
         // a mainchain block that is part of consensus.
         InvalidateBlock(state, chainparams, pindex);

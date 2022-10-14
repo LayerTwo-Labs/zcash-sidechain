@@ -1622,11 +1622,13 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     // ********************************************************* Step 6.5: drivechain initialization
 
+    std::string mainHost = GetArg("-mainhost", "localhost");
+    unsigned short mainPort = GetArg("-mainport", DEFAULT_MAIN_PORT);
     std::string rpcuser = GetArg("-rpcuser", "");
     std::string rpcpassword = GetArg("-rpcpassword", "");
     fs::path drivechain_dir = GetDataDir();
     // Init drivechain object
-    drivechain.reset(new CDrivechain(drivechain_dir, rpcuser, rpcpassword));
+    drivechain.reset(new CDrivechain(drivechain_dir, mainHost, mainPort, rpcuser, rpcpassword));
 
     // ********************************************************* Step 7: load block chain
 

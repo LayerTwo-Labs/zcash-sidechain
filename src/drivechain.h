@@ -7,30 +7,24 @@
 #include "uint256.h"
 #include "fs.h"
 #include "script/standard.h"
+#include "coins.h"
 #include <memory>
 #include <optional>
-
-struct MinedBlock {
-    std::string block;
-    uint32_t nTime;
-    uint256 hashMainBlock;
-};
 
 class CDrivechain
 {
 private:
     Drivechain* drivechain;
-
+    std::optional<CBlock> block;
 public:
-    CDrivechain(fs::path datadir, std::string rpcuser, std::string rpcpassword);
+    CDrivechain(fs::path datadir, std::string mainHost, unsigned short mainPort, std::string rpcuser, std::string rpcpassword);
+    uint256 GetMainchainTip();
     std::optional<CBlock> ConfirmBMM();
     void AttemptBMM(const CBlock& block, CAmount amount);
     bool IsConnected(const CBlockHeader& block);
-    bool VerifyHeaderBMM(const CBlockHeader& block);
-    bool VerifyBlockBMM(const CBlock& block);
+    bool VerifyBMM(const CBlockHeader& block);
     std::vector<CTxOut> GetCoinbaseOutputs();
-    CTxOut GetCoinbaseDataOutput(const uint256& prevSideBlockHash);
-    bool ConnectBlock(const CBlock& block, bool fJustCheck);
+    bool ConnectBlock(const CCoinsViewCache& view, const CBlock& block, bool fJustCheck);
     bool DisconnectBlock(const CBlock& block, bool updateIndices);
     std::string FormatDepositAddress(const std::string& address);
     std::string GetNewMainchainAddress();

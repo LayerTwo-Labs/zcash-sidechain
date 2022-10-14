@@ -303,7 +303,7 @@ public:
 
     //! block header
     int nVersion;
-    uint256 hashMainBlock;
+    uint256 hashPrevMainBlock;
     uint256 hashMerkleRoot;
     uint256 hashBlockCommitments;
     unsigned int nTime;
@@ -343,7 +343,7 @@ public:
         nChainOrchardValue = std::nullopt;
 
         nVersion       = 0;
-        hashMainBlock = uint256();
+        hashPrevMainBlock = uint256();
         hashMerkleRoot = uint256();
         hashBlockCommitments = uint256();
         nTime          = 0;
@@ -362,7 +362,7 @@ public:
         SetNull();
 
         nVersion       = block.nVersion;
-        hashMainBlock = block.hashMainBlock;
+        hashPrevMainBlock = block.hashPrevMainBlock;
         hashMerkleRoot = block.hashMerkleRoot;
         hashBlockCommitments = block.hashBlockCommitments;
         nTime          = block.nTime;
@@ -395,7 +395,7 @@ public:
         block.nVersion       = nVersion;
         if (pprev)
             block.hashPrevBlock = pprev->GetBlockHash();
-        block.hashMainBlock = hashMainBlock;
+        block.hashPrevMainBlock = hashPrevMainBlock;
         block.hashMerkleRoot = hashMerkleRoot;
         block.hashBlockCommitments = hashBlockCommitments;
         block.nTime          = nTime;
@@ -435,7 +435,7 @@ public:
     {
         return strprintf("CBlockIndex(pprev=%p, nHeight=%d, hashMain=%s, merkle=%s, hashBlock=%s)",
             pprev, nHeight,
-            hashMainBlock.ToString(),
+            hashPrevMainBlock.ToString(),
             hashMerkleRoot.ToString(),
             GetBlockHash().ToString());
     }
@@ -526,7 +526,7 @@ public:
         // block header
         READWRITE(this->nVersion);
         READWRITE(hashPrev);
-        READWRITE(hashMainBlock);
+        READWRITE(hashPrevMainBlock);
         READWRITE(hashMerkleRoot);
         READWRITE(hashBlockCommitments);
         READWRITE(nTime);
@@ -575,7 +575,7 @@ public:
         CBlockHeader block;
         block.nVersion        = nVersion;
         block.hashPrevBlock   = hashPrev;
-        block.hashMainBlock   = hashMainBlock;
+        block.hashPrevMainBlock   = hashPrevMainBlock;
         block.hashMerkleRoot  = hashMerkleRoot;
         block.hashBlockCommitments = hashBlockCommitments;
         block.nTime           = nTime;

@@ -151,6 +151,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf9ff0bbfd639f15c74af777d81383cf53efb7c93613f6cab67c6c11e05bbf8b"
 
 [[package]]
+name = "bech32"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d86b93f97252c47b41663388e6d155714a9d0c398b99f1005cbc5f978b29f445"
+
+[[package]]
 name = "bellman"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -196,20 +202,20 @@ dependencies = [
 
 [[package]]
 name = "bitcoin"
-version = "0.27.1"
+version = "0.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a41df6ad9642c5c15ae312dd3d074de38fd3eb7cc87ad4ce10f90292a83fe4d"
+checksum = "9cb36de3b18ad25f396f9168302e36fb7e1e8923298ab3127da252d288d5af9d"
 dependencies = [
- "bech32",
+ "bech32 0.9.1",
  "bitcoin_hashes",
- "secp256k1 0.20.3",
+ "secp256k1 0.24.0",
 ]
 
 [[package]]
 name = "bitcoin_hashes"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "006cc91e1a1d99819bc5b8214be3555c1f0611b169f527a1fdc54ed1f2b745b0"
+checksum = "90064b8dee6815a6470d60bad07bbbaee885c0e12d04177138fa3291a01b7bc4"
 
 [[package]]
 name = "bitflags"
@@ -546,9 +552,9 @@ dependencies = [
 
 [[package]]
 name = "cxx"
-version = "1.0.68"
+version = "1.0.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e599641dff337570f6aa9c304ecca92341d30bf72e1c50287869ed6a36615a6"
+checksum = "19f39818dcfc97d45b03953c1292efc4e80954e1583c4aa770bac1383e2310a4"
 dependencies = [
  "cc",
  "cxxbridge-flags",
@@ -573,15 +579,15 @@ dependencies = [
 
 [[package]]
 name = "cxxbridge-flags"
-version = "1.0.68"
+version = "1.0.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3894ad0c6d517cb5a4ce8ec20b37cd0ea31b480fe582a104c5db67ae21270853"
+checksum = "56a46460b88d1cec95112c8c363f0e2c39afdb237f60583b0b36343bf627ea9c"
 
 [[package]]
 name = "cxxbridge-macro"
-version = "1.0.68"
+version = "1.0.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34fa7e395dc1c001083c7eed28c8f0f0b5a225610f3b6284675f444af6fab86b"
+checksum = "747b608fecf06b0d72d440f27acc99288207324b793be2c17991839f3d4995ea"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -650,7 +656,7 @@ dependencies = [
 [[package]]
 name = "drivechain"
 version = "0.1.0"
-source = "git+https://github.com/nchashch/drivechain?rev=5301b0d38273bf8a0a1aa2c42106f0283323a3e0#5301b0d38273bf8a0a1aa2c42106f0283323a3e0"
+source = "git+https://github.com/nchashch/drivechain?rev=c2b37b1c53d09a542b081a0e63fa0cacd14fa65e#c2b37b1c53d09a542b081a0e63fa0cacd14fa65e"
 dependencies = [
  "base64",
  "bincode",
@@ -670,7 +676,7 @@ dependencies = [
 [[package]]
 name = "drivechain-cpp"
 version = "0.1.0"
-source = "git+https://github.com/nchashch/drivechain-cpp?rev=68f29763eb8b69bbdcc2b79ed5cbe64c4f229384#68f29763eb8b69bbdcc2b79ed5cbe64c4f229384"
+source = "git+https://github.com/nchashch/drivechain-cpp?rev=f3c86ea7e3ef51acc105d526e35b477757d38149#f3c86ea7e3ef51acc105d526e35b477757d38149"
 dependencies = [
  "bitcoin",
  "cxx",
@@ -2033,20 +2039,21 @@ dependencies = [
 
 [[package]]
 name = "secp256k1"
-version = "0.20.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97d03ceae636d0fed5bae6a7f4f664354c5f4fcedf6eef053fef17e49f837d0a"
-dependencies = [
- "secp256k1-sys",
-]
-
-[[package]]
-name = "secp256k1"
 version = "0.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c42e6f1735c5f00f51e43e28d6634141f2bcad10931b2609ddd74a86d751260"
 dependencies = [
- "secp256k1-sys",
+ "secp256k1-sys 0.4.2",
+]
+
+[[package]]
+name = "secp256k1"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7649a0b3ffb32636e60c7ce0d70511eda9c52c658cd0634e194d5a19943aeff"
+dependencies = [
+ "bitcoin_hashes",
+ "secp256k1-sys 0.6.1",
 ]
 
 [[package]]
@@ -2054,6 +2061,15 @@ name = "secp256k1-sys"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "957da2573cde917463ece3570eab4a0b3f19de6f1646cde62e6fd3868f566036"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "secp256k1-sys"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83080e2c2fc1006e625be82e5d1eb6a43b7fd9578b617fcc55814daf286bba4b"
 dependencies = [
  "cc",
 ]
@@ -2745,7 +2761,7 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1322a31b757f0087f110cc4a85dc5c6ccf83d0533bac04c4d3d1ce9112cc602"
 dependencies = [
- "bech32",
+ "bech32 0.8.1",
  "bs58",
  "f4jumble",
  "zcash_encoding",

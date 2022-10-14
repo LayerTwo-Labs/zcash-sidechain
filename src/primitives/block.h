@@ -31,7 +31,7 @@ public:
     enum : int32_t { CURRENT_VERSION=4 };
     int32_t nVersion;
     uint256 hashPrevBlock;
-    uint256 hashMainBlock;
+    uint256 hashPrevMainBlock;
     uint256 hashMerkleRoot;
     uint256 hashBlockCommitments;
     uint32_t nTime;
@@ -50,7 +50,7 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(this->nVersion);
         READWRITE(hashPrevBlock);
-        READWRITE(hashMainBlock);
+        READWRITE(hashPrevMainBlock);
         READWRITE(hashMerkleRoot);
         READWRITE(hashBlockCommitments);
         READWRITE(nTime);
@@ -63,7 +63,7 @@ public:
     {
         nVersion = CBlockHeader::CURRENT_VERSION;
         hashPrevBlock.SetNull();
-        hashMainBlock.SetNull();
+        hashPrevMainBlock.SetNull();
         hashMerkleRoot.SetNull();
         hashBlockCommitments.SetNull();
         nTime = 0;
@@ -126,7 +126,7 @@ public:
         CBlockHeader block;
         block.nVersion       = nVersion;
         block.hashPrevBlock  = hashPrevBlock;
-        block.hashMainBlock  = hashMainBlock;
+        block.hashPrevMainBlock  = hashPrevMainBlock;
         block.hashMerkleRoot = hashMerkleRoot;
         block.hashBlockCommitments = hashBlockCommitments;
         block.nTime          = nTime;
@@ -172,7 +172,7 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(this->nVersion);
         READWRITE(hashPrevBlock);
-        READWRITE(hashMainBlock);
+        READWRITE(hashPrevMainBlock);
         READWRITE(hashMerkleRoot);
         READWRITE(hashBlockCommitments);
         READWRITE(nTime);

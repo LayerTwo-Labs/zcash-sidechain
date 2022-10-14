@@ -1,4 +1,5 @@
 #include "drivechain.h"
+#include "uint256.h"
 #include "core_io.h"
 #include "utilstrencodings.h"
 #include "logging.h"
@@ -6,92 +7,51 @@
 
 const size_t THIS_SIDECHAIN = 0;
 
-CDrivechain::CDrivechain(fs::path datadir, std::string rpcuser, std::string rpcpassword)
+CDrivechain::CDrivechain(fs::path datadir, std::string mainHost, unsigned short mainPort, std::string rpcuser, std::string rpcpassword)
 {
     std::string db_path = (datadir / "drivechain").string();
     this->drivechain = new_drivechain(
                            db_path,
                            THIS_SIDECHAIN,
+                           mainHost,
+                           mainPort,
                            rpcuser,
                            rpcpassword)
                            .into_raw();
 }
 
+uint256 CDrivechain::GetMainchainTip() {
+    return uint256S(std::string(this->drivechain->get_mainchain_tip()));
+}
+
 std::optional<CBlock> CDrivechain::ConfirmBMM()
 {
-    rust::Vec<Block> block_vec = this->drivechain->confirm_bmm();
-    if (block_vec.empty()) {
-        return std::nullopt;
+    if (this->drivechain->confirm_bmm() == BMMState::Succeded) {
+        CBlock block = *this->block;
+        this->block = std::nullopt;
+        return block;
     } else {
-        MinedBlock mined;
-        mined.block = std::string(block_vec[0].data.begin(), block_vec[0].data.end());
-        mined.nTime = block_vec[0].time;
-        std::string main_block_hash = std::string(block_vec[0].main_block_hash.begin(), block_vec[0].main_block_hash.end());
-        mined.hashMainBlock = uint256S(main_block_hash);
-
-        CBlock block;
-        if (DecodeHexBlk(block, mined.block)) {
-            block.hashMainBlock = mined.hashMainBlock;
-            return block;
-        } else {
-            return std::nullopt;
-        }
+        return std::nullopt;
     }
 }
 
 void CDrivechain::AttemptBMM(const CBlock& block, CAmount amount)
 {
-    std::string block_data = EncodeHexBlk(block);
-    uint256 critical_hash = block.hashMerkleRoot;
+    uint256 critical_hash = block.GetHash();
+    uint256 prev_main_block_hash = block.hashPrevMainBlock;
     this->drivechain->attempt_bundle_broadcast();
-    this->drivechain->attempt_bmm(critical_hash.GetHex(), block_data, amount);
-}
-
-CTxOut CDrivechain::GetCoinbaseDataOutput(const uint256& prevSideBlockHash)
-{
-    rust::Vec<unsigned char> prevMainBlockHash = this->drivechain->get_mainchain_tip();
-    std::vector<unsigned char> data;
-    std::vector<unsigned char> prevSideBlockHashVch(prevSideBlockHash.begin(), prevSideBlockHash.end());
-    std::reverse(prevSideBlockHashVch.begin(), prevSideBlockHashVch.end());
-    for (const unsigned char& byte : prevMainBlockHash) {
-        data.push_back(byte);
-    }
-    for (const unsigned char& byte : prevSideBlockHashVch) {
-        data.push_back(byte);
-    }
-    CTxOut dataOut;
-    dataOut.nValue = 0;
-    dataOut.scriptPubKey = CScript(OP_RETURN) + CScript(data.begin(), data.end());
-    return dataOut;
+    this->drivechain->attempt_bmm(critical_hash.GetHex(), prev_main_block_hash.GetHex(), amount);
+    this->block = block;
 }
 
 bool CDrivechain::IsConnected(const CBlockHeader& block)
 {
-    return this->drivechain->is_main_block_connected(block.hashMainBlock.GetHex());
+    return this->drivechain->is_main_block_connected(block.hashPrevMainBlock.GetHex());
 }
 
-bool CDrivechain::VerifyHeaderBMM(const CBlockHeader& block)
+bool CDrivechain::VerifyBMM(const CBlockHeader& block)
 {
-    return this->drivechain->verify_bmm(block.hashMainBlock.GetHex(), block.hashMerkleRoot.GetHex());
-}
-
-bool CDrivechain::VerifyBlockBMM(const CBlock& block)
-{
-    if (!this->VerifyHeaderBMM(block)) {
-        return false;
-    }
-    CScript dataScript = block.vtx[0].vout[0].scriptPubKey;
-    std::vector<unsigned char> prevMainBlockHash(dataScript.begin()+1, dataScript.begin()+33);
-    std::vector<unsigned char> prevSideBlockHash(dataScript.begin()+33, dataScript.end());
-    rust::Vec<unsigned char> actualPrevMainBlockHash = this->drivechain->get_prev_main_block_hash(block.hashMainBlock.GetHex());
-    std::string actualPrevSideBlockHash = block.hashPrevBlock.GetHex();
-    if (actualPrevSideBlockHash != HexStr(prevSideBlockHash)) {
-        return false;
-    }
-    if (HexStr(actualPrevMainBlockHash) != HexStr(prevMainBlockHash)) {
-        return false;
-    }
-    return true;
+    return this->drivechain->verify_bmm(block.hashPrevMainBlock.GetHex(), block.hashMerkleRoot.GetHex());
 }
 
 std::vector<CTxOut> CDrivechain::GetCoinbaseOutputs()
@@ -111,7 +71,7 @@ std::vector<CTxOut> CDrivechain::GetCoinbaseOutputs()
     return txouts;
 }
 
-bool CDrivechain::ConnectBlock(const CBlock& block, bool fJustCheck) {
+bool CDrivechain::ConnectBlock(const CCoinsViewCache& view, const CBlock& block, bool fJustCheck) {
     KeyIO keyIO(Params());
     rust::Vec<Output> outputs;
     // Connect deposit outputs
@@ -129,7 +89,7 @@ bool CDrivechain::ConnectBlock(const CBlock& block, bool fJustCheck) {
     }
     // connect withdrawal outputs and refunds
     rust::Vec<Withdrawal> withdrawals;
-    rust::Vec<rust::String> refunds;
+    rust::Vec<Refund> refunds;
     for (auto tx = block.vtx.begin()+1; tx < block.vtx.end(); ++tx) {
         for (int i = 0; i < tx->vout.size(); ++i) {
             const CTxOut& out = tx->vout[i];
@@ -159,10 +119,15 @@ bool CDrivechain::ConnectBlock(const CBlock& block, bool fJustCheck) {
         }
         for (int i = 0; i < tx->vin.size(); ++i) {
             const CTxIn& in = tx->vin[i];
+            const CCoins *coins = view.AccessCoins(in.prevout.hash);
+            CAmount amount = coins->vout[in.prevout.n].nValue;
             CDataStream ssOutpoint(SER_NETWORK, PROTOCOL_VERSION);
             ssOutpoint << in.prevout;
-            std::vector outpointVec(ssOutpoint.begin(), ssOutpoint.end());
-            refunds.push_back(HexStr(outpointVec));
+            std::vector outpointVch(ssOutpoint.begin(), ssOutpoint.end());
+            Refund refund;
+            refund.outpoint = HexStr(outpointVch);
+            refund.amount = amount;
+            refunds.push_back(refund);
         }
     }
     return this->drivechain->connect_block(outputs, withdrawals, refunds, fJustCheck);

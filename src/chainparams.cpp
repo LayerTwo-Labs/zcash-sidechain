@@ -43,7 +43,7 @@ static CBlock CreateGenesisBlock(const char* pszTimestamp, const CScript& genesi
     genesis.nVersion = nVersion;
     genesis.vtx.push_back(txNew);
     genesis.hashPrevBlock.SetNull();
-    genesis.hashMainBlock.SetNull();
+    genesis.hashPrevMainBlock.SetNull();
     genesis.hashMerkleRoot = genesis.BuildMerkleTree();
     return genesis;
 }

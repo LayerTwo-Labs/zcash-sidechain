@@ -27,7 +27,8 @@ static const bool DEFAULT_PRINTPRIORITY = false;
 typedef std::variant<
     libzcash::OrchardRawAddress,
     libzcash::SaplingPaymentAddress,
-    boost::shared_ptr<CReserveScript>> MinerAddress;
+    boost::shared_ptr<CReserveScript>
+    > MinerAddress;
 
 class ExtractMinerAddress
 {
