@@ -265,12 +265,14 @@ CTransaction& CTransaction::operator=(const CTransaction &tx) {
 CAmount CTransaction::GetValueOut() const
 {
     CAmount nValueOut = 0;
-    for (std::vector<CTxOut>::const_iterator it(vout.begin()); it != vout.end(); ++it)
     {
-        if (!MoneyRange(it->nValue)) {
+        // Only the first transparent output pays out fees. All other outputs
+        // are deposits.
+        const CTxOut& out = vout[0];
+        if (!MoneyRange(out.nValue)) {
             throw std::runtime_error("CTransaction::GetValueOut(): nValue out of range");
         }
-        nValueOut += it->nValue;
+        nValueOut += out.nValue;
         if (!MoneyRange(nValueOut)) {
             throw std::runtime_error("CTransaction::GetValueOut(): nValueOut out of range");
         }
