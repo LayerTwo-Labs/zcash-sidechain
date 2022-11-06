@@ -361,13 +361,13 @@ UniValue withdraw(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
     CAmount nMainchainFee = AmountFromValue(params[1]);
     std::string mainAddress;
-    if (params.size() > 2) {
+    if (!params[2].isNull()) {
         mainAddress = params[2].get_str();
     } else {
         mainAddress = drivechain->GetNewMainchainAddress();
     }
     bool fSubtractFeeFromAmount = false;
-    if (params.size() > 3)
+    if (!params[3].isNull())
         fSubtractFeeFromAmount = params[3].get_bool();
     CPubKey refundKey = pwalletMain->GenerateNewKey(false);
     CWithdrawal withdrawal(refundKey.GetID(), mainAddress, nMainchainFee);
@@ -412,21 +412,21 @@ UniValue refund(const UniValue& params, bool fHelp)
     CAmount nMainchainFee = AmountFromValue(params[1]);
 
     std::string mainAddress;
-    if (params.size() > 2) {
+    if (!params[2].isNull()) {
         mainAddress = params[2].get_str();
     } else {
         mainAddress = drivechain->GetNewMainchainAddress();
     }
     KeyIO keyIO(Params());
     CTxDestination refundDest;
-    if (params.size() > 3) {
+    if (!params[3].isNull()) {
         auto destStr = params[3].get_str();
         refundDest = keyIO.DecodeDestination(destStr);
     } else {
         refundDest = pwalletMain->GenerateNewKey(false).GetID();
     }
     bool fSubtractFeeFromAmount = false;
-    if (params.size() > 4)
+    if (!params[4].isNull())
         fSubtractFeeFromAmount = params[4].get_bool();
     CWalletTx wtxNew;
     EnsureWalletIsUnlocked();
@@ -460,7 +460,7 @@ UniValue deposit(const UniValue& params, bool fHelp) {
     CAmount nAmount = AmountFromValue(params[0]);
     CAmount nFee = AmountFromValue(params[1]);
     std::string address;
-    if (params.size() < 3) {
+    if (params[2].isNull()) {
         KeyIO keyIO(Params());
         // Generate a new key that is added to wallet
         CPubKey newKey = pwalletMain->GenerateNewKey(true);
