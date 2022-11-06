@@ -963,6 +963,11 @@ public:
      * shielded output values - is positive or negative.
      */
 
+
+    // Return sum of txouts, without deposit outputs.
+    CAmount GetFeesValueOut() const;
+    // Return the of deposit outputs.
+    CAmount GetDepositsValueOut() const;
     // Return sum of txouts, (negative valueBalanceSapling or zero) and JoinSplit vpub_old.
     CAmount GetValueOut() const;
     // GetValueIn() is a method on CCoinsViewCache, because

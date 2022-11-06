@@ -262,17 +262,40 @@ CTransaction& CTransaction::operator=(const CTransaction &tx) {
     return *this;
 }
 
+CAmount CTransaction::GetFeesValueOut() const
+{
+    return GetValueOut() - GetDepositsValueOut();
+}
+
+CAmount CTransaction::GetDepositsValueOut() const {
+    CAmount nValueOut = 0;
+    // FIXME: Does it make sense to get rid of transparent miner addresses for
+    // fees? That would let us delete this code.
+    //
+    // All outputs in coinbase except the 0th are deposits. The 0th output is
+    // for fees.
+    for (std::vector<CTxOut>::const_iterator it(vout.begin()+1); it != vout.end(); ++it)
+    {
+        if (!MoneyRange(it->nValue)) {
+            throw std::runtime_error("CTransaction::GetValueOut(): nValue out of range");
+        }
+        nValueOut += it->nValue;
+        if (!MoneyRange(nValueOut)) {
+            throw std::runtime_error("CTransaction::GetValueOut(): nValueOut out of range");
+        }
+    }
+    return nValueOut;
+}
+
 CAmount CTransaction::GetValueOut() const
 {
     CAmount nValueOut = 0;
+    for (std::vector<CTxOut>::const_iterator it(vout.begin()); it != vout.end(); ++it)
     {
-        // Only the first transparent output pays out fees. All other outputs
-        // are deposits.
-        const CTxOut& out = vout[0];
-        if (!MoneyRange(out.nValue)) {
+        if (!MoneyRange(it->nValue)) {
             throw std::runtime_error("CTransaction::GetValueOut(): nValue out of range");
         }
-        nValueOut += out.nValue;
+        nValueOut += it->nValue;
         if (!MoneyRange(nValueOut)) {
             throw std::runtime_error("CTransaction::GetValueOut(): nValueOut out of range");
         }
