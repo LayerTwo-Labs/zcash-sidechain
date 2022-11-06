@@ -63,7 +63,7 @@ static HTTPRPCTimerInterface* httpRPCTimerInterface = 0;
 static void JSONErrorReply(HTTPRequest* req, const UniValue& objError, const UniValue& id)
 {
     // Send error reply from json-rpc error object
-    int nStatus = HTTP_INTERNAL_SERVER_ERROR;
+    int nStatus = HTTP_OK;
     int code = find_value(objError, "code").get_int();
 
     if (code == RPC_INVALID_REQUEST)

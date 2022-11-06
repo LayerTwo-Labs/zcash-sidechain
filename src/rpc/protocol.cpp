@@ -40,11 +40,11 @@ UniValue JSONRPCReplyObj(const UniValue& result, const UniValue& error, const Un
 {
     UniValue reply(UniValue::VOBJ);
     if (!error.isNull())
-        reply.pushKV("result", NullUniValue);
+        reply.pushKV("error", error);
     else
         reply.pushKV("result", result);
-    reply.pushKV("error", error);
     reply.pushKV("id", id);
+    reply.pushKV("jsonrpc", "2.0");
     return reply;
 }
 
