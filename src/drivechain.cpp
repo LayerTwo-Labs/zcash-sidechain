@@ -119,14 +119,18 @@ bool CDrivechain::ConnectBlock(const CCoinsViewCache& view, const CBlock& block,
         }
         for (int i = 0; i < tx->vin.size(); ++i) {
             const CTxIn& in = tx->vin[i];
-            const CCoins *coins = view.AccessCoins(in.prevout.hash);
-            CAmount amount = coins->vout[in.prevout.n].nValue;
             CDataStream ssOutpoint(SER_NETWORK, PROTOCOL_VERSION);
             ssOutpoint << in.prevout;
             std::vector outpointVch(ssOutpoint.begin(), ssOutpoint.end());
             Refund refund;
             refund.outpoint = HexStr(outpointVch);
-            refund.amount = amount;
+            // NOTE: We know that refund amounts are correct, because
+            // withdrawals are just regular UTXOs. Getting the actual amount
+            // would require calling GetTransaction() which is potentially slow.
+            //
+            // Since "refund_amount_check" feature of the "drivechain-cpp" crate
+            // is disabled the amount field will be ignored.
+            refund.amount = 0;
             refunds.push_back(refund);
         }
     }
