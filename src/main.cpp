@@ -3527,7 +3527,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (block.vtx[0].GetFeesValueOut() > blockReward)
         return state.DoS(100,
                          error("ConnectBlock(): coinbase pays too much (actual=%d vs limit=%d)",
-                               block.vtx[0].GetValueOut(), blockReward),
+                               block.vtx[0].GetFeesValueOut(), blockReward),
                                REJECT_INVALID, "bad-cb-amount");
 
     // Check attempt to update deposit DB, this checks that deposit outputs are
