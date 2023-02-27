@@ -384,15 +384,15 @@ UniValue refund(const UniValue& params, bool fHelp)
         return NullUniValue;
     if (fHelp || params.size() < 2 || params.size() > 5)
         throw runtime_error(
-            "refund \"address\" amount ( subtractfeefromamount )\n"
-            "\nRefund an amount to a given mainchain address. The amount is a real and is rounded to the nearest 0.00000001.\n"
+            "refund amount mainchainFee ( subtractfeefromamount ) ( mainchainAddress ) ( address )\n"
+            "\nRefund an amount waiting for withdrawal. The amount is a real and is rounded to the nearest 0.00000001.\n"
             + HelpRequiringPassphrase() +
             "\nArguments:\n"
             "1. \"amount\"            (numeric, required) The amount in " + CURRENCY_UNIT + " to withdraw. eg 0.1\n"
             "2. \"mainchainFee\"      (numeric, required) The mainchain fee for the change withdrawal.\n"
-            "3. \"mainchainAddress\"  (string, optional, default=new address) The mainchain address for the change withdrawal.\n"
-            "4. \"address\"           (string, optional, default=new address) The Zcash address to refund to.\n"
-            "5. subtractfeefromamount (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
+            "3. subtractfeefromamount (boolean, optional, default=false) The fee will be deducted from the amount being sent.\n"
+            "4. \"mainchainAddress\"  (string, optional, default=new address) The mainchain address for the change withdrawal.\n"
+            "5. \"address\"           (string, optional, default=new address) The Zcash address to refund to.\n"
             "                             The recipient will receive less Zcash than you enter in the amount field.\n"
             "\nResult:\n"
             "\"transactionid\"  (string) The transaction id.\n"
@@ -410,24 +410,23 @@ UniValue refund(const UniValue& params, bool fHelp)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
     CAmount nMainchainFee = AmountFromValue(params[1]);
-
+    bool fSubtractFeeFromAmount = false;
+    if (!params[2].isNull())
+        fSubtractFeeFromAmount = params[2].get_bool();
     std::string mainAddress;
-    if (!params[2].isNull()) {
-        mainAddress = params[2].get_str();
+    if (!params[3].isNull()) {
+        mainAddress = params[3].get_str();
     } else {
         mainAddress = drivechain->GetNewMainchainAddress();
     }
     KeyIO keyIO(Params());
     CTxDestination refundDest;
-    if (!params[3].isNull()) {
-        auto destStr = params[3].get_str();
+    if (!params[4].isNull()) {
+        auto destStr = params[4].get_str();
         refundDest = keyIO.DecodeDestination(destStr);
     } else {
         refundDest = pwalletMain->GenerateNewKey(false).GetID();
     }
-    bool fSubtractFeeFromAmount = false;
-    if (!params[4].isNull())
-        fSubtractFeeFromAmount = params[4].get_bool();
     CWalletTx wtxNew;
     EnsureWalletIsUnlocked();
     SendRefund(refundDest, nAmount, mainAddress, nMainchainFee, fSubtractFeeFromAmount, wtxNew);
@@ -2862,6 +2861,7 @@ UniValue z_listunspent(const UniValue& params, bool fHelp)
         obj.pushKV("spendable", hasSproutSpendingKey);
         obj.pushKV("address", keyIO.EncodePaymentAddress(entry.address));
         obj.pushKV("amount", ValueFromAmount(CAmount(entry.note.value())));
+        obj.pushKV("amountZat", CAmount(entry.note.value()));
         std::string data(entry.memo.begin(), entry.memo.end());
         obj.pushKV("memo", HexStr(data));
         if (hasSproutSpendingKey) {
@@ -2890,6 +2890,7 @@ UniValue z_listunspent(const UniValue& params, bool fHelp)
             obj.pushKV("address", keyIO.EncodePaymentAddress(addr.first));
         }
         obj.pushKV("amount", ValueFromAmount(CAmount(entry.note.value()))); // note.value() is equivalent to plaintext.value()
+        obj.pushKV("amountZat", CAmount(entry.note.value()));
         obj.pushKV("memo", HexStr(entry.memo));
         if (hasSaplingSpendingKey) {
             obj.pushKV(
@@ -2923,6 +2924,7 @@ UniValue z_listunspent(const UniValue& params, bool fHelp)
             obj.pushKV("address", keyIO.EncodePaymentAddress(addr.first));
         }
         obj.pushKV("amount", ValueFromAmount(entry.GetNoteValue()));
+        obj.pushKV("amountZat", entry.GetNoteValue());
         obj.pushKV("memo", HexStr(entry.GetMemo()));
         if (haveSpendingKey) {
             obj.pushKV("change", isInternal);

@@ -5,7 +5,7 @@
 #include "logging.h"
 #include "key_io.h"
 
-const size_t THIS_SIDECHAIN = 0;
+const size_t THIS_SIDECHAIN = 5;
 
 CDrivechain::CDrivechain(fs::path datadir, std::string mainHost, unsigned short mainPort, std::string rpcuser, std::string rpcpassword)
 {

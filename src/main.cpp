@@ -2305,6 +2305,9 @@ bool TestSetIBD(bool ibd) {
 
 bool IsInitialBlockDownload(const Consensus::Params& params)
 {
+    // If we are in regtest mode, we are not in IBD.
+    if (params.nMinimumChainWork == uint256S("0x00"))
+        return false;
     // Once this function has returned false, it must remain false.
     // Optimization: pre-test latch before taking the lock.
     if (IBDLatchToFalse.load(std::memory_order_relaxed))
