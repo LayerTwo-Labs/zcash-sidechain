@@ -1,0 +1,33 @@
+.git
+.cargo
+
+# build files
+config.log
+config.status
+configure
+configure~
+Makefile
+Makefile.in
+aclocal.m4
+libtool
+
+# non-sources
+contrib/
+Dockerfile
+*.md
+
+# build artifacts
+target/
+autom4te.cache
+
+# copied from depends/ .gitignore. is there a better way?
+depends/SDKs/
+depends/work/
+depends/built/
+depends/sources/
+depends/config.site
+depends/x86_64*
+depends/i686*
+depends/mips*
+depends/arm*
+depends/aarch64*
