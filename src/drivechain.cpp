@@ -1,4 +1,5 @@
 #include "drivechain.h"
+#include "bridge.rs.cc"
 #include "uint256.h"
 #include "core_io.h"
 #include "utilstrencodings.h"
@@ -10,6 +11,11 @@ const size_t THIS_SIDECHAIN = 5;
 CDrivechain::CDrivechain(fs::path datadir, std::string mainHost, unsigned short mainPort, std::string rpcuser, std::string rpcpassword)
 {
     std::string db_path = (datadir / "drivechain").string();
+    LogPrintf("initializing drivechain: DB path = %s, THIS_SIDECHAIN = %d, main host = %s, main port = %s, RPC user = %s\n", 
+        db_path, THIS_SIDECHAIN, mainHost, mainPort, rpcuser);
+
+    try {
+
     this->drivechain = new_drivechain(
                            db_path,
                            THIS_SIDECHAIN,
@@ -18,6 +24,11 @@ CDrivechain::CDrivechain(fs::path datadir, std::string mainHost, unsigned short 
                            rpcuser,
                            rpcpassword)
                            .into_raw();
+    } 
+    catch (const ::rust::Error& e) {
+        LogPrintf("unable to initialize drivechain: %s\n", e.what());
+        throw;
+    }
 }
 
 uint256 CDrivechain::GetMainchainTip() {
