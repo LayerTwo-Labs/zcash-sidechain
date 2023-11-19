@@ -1,4 +1,55 @@
-### Build from Source (Sidechain Version)
+## Build from Source (Sidechain Version)
+
+### Non-Nix (Ubuntu)
+
+First, install the Zcash build dependencies. These can be found on the 
+official [Zcash docs](https://zcash.readthedocs.io/en/master/rtd_pages/Debian-Ubuntu-build.html). 
+Only install the dependencies listed in the `apt-get` block, and skip 
+the rest of the instructions. 
+
+Once you have installed the build dependencies:
+
+```bash
+# build all dependencies
+$ make -C ./depends/
+
+$ ./autogen.sh
+$ HOST=$(./depends/config.guess)
+
+# Use the previously compiled dependencies instead of system libraries
+$ export CONFIG_SITE="$PWD/depends/$HOST/share/config.site"  
+
+# Configure the build
+$ ./configure --disable-tests --disable-bench --disable-hardening --enable-online-rust
+
+# Build the Rust C++ bindings + bridge
+$ make -C src cargo-build-lib
+
+# Find the location of the newly compiled Rust C++ bridge library
+$ BRIDGE_LOCATION=$(dirname $(find target  -name 'libcxxbridge1.a'))
+
+# Instruct the linker to include the Rust C++ bridge library
+$ export LDFLAGS="-L$PWD/$BRIDGE_LOCATION -lcxxbridge1" 
+
+# Reconfigure the build, taking our freshly compiled Rust C++ bridge into account.
+$ ./configure --disable-tests --disable-bench --disable-hardening --enable-online-rust
+
+# Run the actual build
+$ make -j # omit the -j if running into memory issues
+```
+
+The observant reader will note that this requires a bit of back and forth, which
+might seem odd. **Two** calls to `./configure`, what's this??
+
+The issue boils down to the following: 
+
+1. We're building a C++ library based on generated C++ code from Rust sources (in the `make -C src cargo-build-lib` step)
+2. This needs to have the same C++ toolchain configuration as the rest of the build
+3. The output of this (`libcxxbridge1.a`) must be included in the linker flags (`LDFLAGS`) for the build to succeed
+3. However, the Rust libraries have to be in place _before_ we invoke `./configure`... This leads to an awkward chicken-or-egg situation.
+4. The solution (it might be a strange one, perhaps there's better options) is to run `./configure` _twice_, and doing the Rust build step in-between.
+
+### Nix - currently not working
 
 To install all dependencies and build zcash-sidechain on ubuntu (22.04) run:
 
