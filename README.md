@@ -26,10 +26,10 @@ $ ./configure --disable-tests --disable-bench --disable-hardening --enable-onlin
 $ make -C src cargo-build-lib
 
 # Find the location of the newly compiled Rust C++ bridge library
-$ BRIDGE_LOCATION=$(dirname $(find target  -name 'libcxxbridge1.a'))
+$ BRIDGE_LOCATION=$(dirname $(./contrib/devtools/find-libcxxbridge.sh))
 
 # Instruct the linker to include the Rust C++ bridge library
-$ export LDFLAGS="-L$PWD/$BRIDGE_LOCATION -lcxxbridge1" 
+$ export LDFLAGS="-L$BRIDGE_LOCATION -lcxxbridge1" 
 
 # Reconfigure the build, taking our freshly compiled Rust C++ bridge into account.
 $ ./configure --disable-tests --disable-bench --disable-hardening --enable-online-rust
