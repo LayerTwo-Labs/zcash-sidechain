@@ -1,0 +1,60 @@
+name: Build
+
+on: 
+  pull_request: 
+  push: 
+    branches:
+      - "master"
+      - "sidechain"
+
+jobs: 
+  build: 
+    name: Build binaries
+    runs-on: ubuntu-latest
+    steps: 
+        # https://zcash.readthedocs.io/en/master/rtd_pages/Debian-Ubuntu-build.html
+      - name: install Linux deps
+        run: sudo apt-get install build-essential pkg-config libc6-dev m4 g++-multilib autoconf libtool ncurses-dev unzip git python3 python3-zmq zlib1g-dev curl bsdmainutils automake libtinfo5
+
+      - uses: actions/checkout@v3
+    
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with: 
+          path: ./depends
+          key: ${{ runner.os }}-${{ hashFiles('depends/packages/**') }}
+
+      - name: download dependencies
+        run: make -C ./depends download-linux
+
+      - name: build dependencies
+        run: make -C ./depends
+
+      - run: ./autogen.sh
+
+      - run: echo "HOST=$(./depends/config.guess)" >> $GITHUB_ENV
+
+      - run: echo "CONFIG_SITE=$PWD/depends/$HOST/share/config.site" >> $GITHUB_ENV
+
+      - run: ./configure --disable-tests --disable-bench --disable-hardening --enable-online-rust
+
+      - run: make -C src cargo-build-lib
+
+      - run: echo BRIDGE_LOCATION=$(dirname $(./contrib/devtools/find-libcxxbridge.sh)) >> $GITHUB_ENV
+
+      - run: echo LDFLAGS="-L$BRIDGE_LOCATION -lcxxbridge1" >> $GITHUB_ENV
+
+        # Reconfigure the build, taking our freshly compiled Rust C++ bridge into account.
+      - run: ./configure --disable-tests --disable-bench --disable-hardening --enable-online-rust
+
+      - run: make -j
+
+      - uses: actions/upload-artifact@v4
+        with: 
+          name: binaries
+          if-no-files-found: error
+          # TODO: Update these when renaming the binaries produced
+          path: |
+            src/zcashd
+            src/zcash-cli
+
