@@ -21,6 +21,12 @@ define $(package)_set_vars
   $(package)_config_opts_linux=--with-pic
   $(package)_config_opts_freebsd=--with-pic
   $(package)_cppflags_mingw32=-D_WIN32_WINNT=0x0601
+
+  ifeq ($(build_os),darwin) # When building on macOS, force x86 architecture.
+  $(package)_ldflags+=-arch x86_64
+  $(package)_cflags+=--target=x86_64-apple-darwin -I$(shell xcrun --show-sdk-path)/usr/include
+  $(package)_cxxflags+=--target=x86_64-apple-darwin -I$(shell xcrun --show-sdk-path)/usr/include
+  endif
 endef
 
 define $(package)_config_cmds

@@ -30,8 +30,11 @@ OSX_SDK=$(SDK_PATH)/Xcode-$(XCODE_VERSION)-$(XCODE_BUILD_ID)-extracted-SDK-with-
 darwin_CC=clang -target $(host) -mmacosx-version-min=$(OSX_MIN_VERSION) --sysroot $(OSX_SDK) -mlinker-version=$(LD64_VERSION) -B$(build_prefix)/bin
 darwin_CXX=clang++ -target $(host) -mmacosx-version-min=$(OSX_MIN_VERSION) --sysroot $(OSX_SDK) -stdlib=libc++ -mlinker-version=$(LD64_VERSION) -B$(build_prefix)/bin -nostdinc++ -isystem $(OSX_SDK)/usr/include/c++/v1
 
-darwin_CFLAGS=-pipe
-darwin_CXXFLAGS=$(darwin_CFLAGS)
+# Building for ARM (M1, M2, etc) chips is not supported. However, ARM Macs can 
+# emulate x86_64 programs very well. We therefore build for x86_64 chips, which 
+# /is/ supported. 
+darwin_CFLAGS=-pipe -arch x86_64 
+darwin_CXXFLAGS=$(darwin_CFLAGS) 
 
 darwin_release_CFLAGS=-O3
 darwin_release_CXXFLAGS=$(darwin_release_CFLAGS)

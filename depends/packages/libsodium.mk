@@ -7,6 +7,16 @@ $(package)_dependencies=
 $(package)_patches=1.0.15-pubkey-validation.diff 1.0.15-signature-validation.diff
 $(package)_config_opts=
 
+define $(package)_set_vars
+
+ifeq ($(build_os),darwin) # When building on macOS, force x86 architecture.
+$(package)_ldflags+=-arch x86_64
+$(package)_cflags+=--target=x86_64-apple-darwin -I$(shell xcrun --show-sdk-path)/usr/include
+$(package)_cxxflags+=--target=x86_64-apple-darwin -I$(shell xcrun --show-sdk-path)/usr/include
+endif
+
+endef
+
 define $(package)_preprocess_cmds
   patch -p1 < $($(package)_patch_dir)/1.0.15-pubkey-validation.diff && \
   patch -p1 < $($(package)_patch_dir)/1.0.15-signature-validation.diff && \
