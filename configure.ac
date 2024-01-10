@@ -433,6 +433,10 @@ case $host in
          fi
        fi
 
+       dnl Required for linking with librustzcash 
+       CXXFLAGS="$CXXFLAGS -framework Security"
+
+
        AC_CHECK_PROG([BREW],brew, brew)
        if test x$BREW = xbrew; then
          dnl These Homebrew packages may be keg-only, meaning that they won't be found

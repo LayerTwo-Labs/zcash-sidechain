@@ -200,7 +200,7 @@ download-crates: native_rust
 download-one: check-sources $(all_sources)
 
 download-osx:
-	@$(MAKE) -s HOST=x86_64-apple-darwin14 download-one
+	@$(MAKE) -s HOST=x86_64-apple-darwin23.0.0 download-one
 download-linux:
 	@$(MAKE) -s HOST=x86_64-pc-linux-gnu download-one
 download-win:
