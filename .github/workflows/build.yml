@@ -8,8 +8,8 @@ on:
       - "sidechain"
 
 jobs: 
-  build: 
-    name: Build binaries
+  build-linux: 
+    name: Build Linux binaries
     runs-on: ubuntu-latest
     steps: 
         # https://zcash.readthedocs.io/en/master/rtd_pages/Debian-Ubuntu-build.html
@@ -51,10 +51,65 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with: 
-          name: binaries
+          name: binaries-${{ runner.os }}
           if-no-files-found: error
           # TODO: Update these when renaming the binaries produced
           path: |
             src/zcashd
             src/zcash-cli
 
+
+  build-macos: 
+    name: Build macOS binaries
+    runs-on: macos-latest
+    steps: 
+        # https://zcash.readthedocs.io/en/master/rtd_pages/Debian-Ubuntu-build.html
+      - name: install deps
+        run: brew install pkgconfig automake autoconf libtool coreutils
+
+      - uses: actions/checkout@v3
+    
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with: 
+          path: ./depends
+          key: ${{ runner.os }}-${{ hashFiles('depends/packages/**') }}
+        
+      - name: Set HOST + BUILD
+        run: |
+          echo BUILD=x86_64-apple-darwin23.0.0 >> $GITHUB_ENV
+          echo HOST=x86_64-apple-darwin23.0.0 >> $GITHUB_ENV
+
+      - name: download dependencies
+        run: make -C ./depends download-osx
+
+      - name: build dependencies
+        run: make -C ./depends
+
+      - run: ./autogen.sh
+
+      - run: echo "CONFIG_SITE=$PWD/depends/$HOST/share/config.site" >> $GITHUB_ENV
+
+      - run: ./configure --disable-tests --disable-bench --disable-hardening --enable-online-rust
+
+      - run: make -C src cargo-build-lib
+
+      - run: find ./target -name libcxxbridge1.a
+
+      - run: echo BRIDGE_LOCATION=$(dirname $(./contrib/devtools/find-libcxxbridge.sh)) >> $GITHUB_ENV
+
+      - run: echo LDFLAGS="-L$BRIDGE_LOCATION -lcxxbridge1" >> $GITHUB_ENV
+
+        # Reconfigure the build, taking our freshly compiled Rust C++ bridge into account.
+      - run: ./configure --disable-tests --disable-bench --disable-hardening --enable-online-rust
+
+      - run: make -j
+
+      - uses: actions/upload-artifact@v4
+        with: 
+          name: binaries-${{ runner.os }}
+          if-no-files-found: error
+          # TODO: Update these when renaming the binaries produced
+          path: |
+            src/zcashd
+            src/zcash-cli
