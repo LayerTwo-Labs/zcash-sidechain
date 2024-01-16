@@ -2,11 +2,11 @@
 *.deb
 *.exe
 src/bitcoin
-src/zcashd
-src/zcashd-wallet-tool
-src/zcash-cli
-src/zcash-gtest
-src/zcash-tx
+src/zsided
+src/zsided-wallet-tool
+src/zside-cli
+src/zside-gtest
+src/zside-tx
 src/test/test_bitcoin
 zcutil/bin/
 

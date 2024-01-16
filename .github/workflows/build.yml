@@ -53,10 +53,9 @@ jobs:
         with: 
           name: binaries-${{ runner.os }}
           if-no-files-found: error
-          # TODO: Update these when renaming the binaries produced
           path: |
-            src/zcashd
-            src/zcash-cli
+            src/zsided
+            src/zside-cli
 
 
   build-macos: 
@@ -109,7 +108,6 @@ jobs:
         with: 
           name: binaries-${{ runner.os }}
           if-no-files-found: error
-          # TODO: Update these when renaming the binaries produced
           path: |
-            src/zcashd
-            src/zcash-cli
+            src/zsided
+            src/zside-cli
