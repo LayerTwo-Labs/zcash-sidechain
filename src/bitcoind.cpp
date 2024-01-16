@@ -89,7 +89,7 @@ bool AppInit(int argc, char* argv[])
         else
         {
             strUsage += "\n" + _("Usage:") + "\n" +
-                  "  zcashd [options]                     " + _("Start Zcash Daemon") + "\n";
+                  "  zsided [options]                     " + _("Start Zcash Sidechain Daemon") + "\n";
 
             strUsage += "\n" + HelpMessage(HMM_BITCOIND);
         }
@@ -119,11 +119,11 @@ bool AppInit(int argc, char* argv[])
         } catch (const missing_zcash_conf& e) {
             auto confFilename = GetArg("-conf", BITCOIN_CONF_FILENAME);
             fprintf(stderr,
-                (_("Before starting zcashd, you need to create a configuration file:\n"
+                (_("Before starting zsided, you need to create a configuration file:\n"
                    "%s\n"
                    "It can be completely empty! That indicates you are happy with the default\n"
-                   "configuration of zcashd. But requiring a configuration file to start ensures\n"
-                   "that zcashd won't accidentally compromise your privacy if there was a default\n"
+                   "configuration of zsided. But requiring a configuration file to start ensures\n"
+                   "that zsided won't accidentally compromise your privacy if there was a default\n"
                    "option you needed to change.\n"
                    "\n"
                    "You can look at the example configuration file for suggestions of default\n"
@@ -155,7 +155,7 @@ bool AppInit(int argc, char* argv[])
 
         if (fCommandLine)
         {
-            fprintf(stderr, "Error: There is no RPC client functionality in zcashd. Use the zcash-cli utility instead.\n");
+            fprintf(stderr, "Error: There is no RPC client functionality in zsided. Use the zcash-cli utility instead.\n");
             exit(EXIT_FAILURE);
         }
 #ifndef WIN32

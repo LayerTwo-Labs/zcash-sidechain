@@ -35,18 +35,18 @@ RUN export CONFIG_SITE="/depends/$(./depends/config.guess)/share/config.site" &&
     make
 
 # Verify the binary is working
-RUN ./src/zcashd --help
+RUN ./src/zsided --help
 
 FROM debian:bookworm-slim AS final
 
 # Quality of life for working with RPC API
 RUN apt-get update && apt-get install -y curl
 
-COPY --from=worker /src/zcashd /src/zcash-cli /usr/bin
+COPY --from=worker /src/zcashd /src/zside-cli /usr/bin
 
 COPY --from=params-fetcher /root/.zcash-params /root/.zcash-params
 
 # Verify the binary is working and installed
-RUN zcashd --help
+RUN zsided --help
 
-ENTRYPOINT ["zcashd"]
+ENTRYPOINT ["zsided"]
