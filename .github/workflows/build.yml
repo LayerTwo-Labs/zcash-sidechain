@@ -28,7 +28,7 @@ jobs:
         run: make -C ./depends download-linux
 
       - name: build dependencies
-        run: make -C ./depends
+        run: make -C ./depends -j
 
       - run: ./autogen.sh
 
@@ -57,6 +57,45 @@ jobs:
             src/zsided
             src/zside-cli
 
+  build-windows: 
+    name: Build Windows binaries
+    runs-on: ubuntu-latest
+    steps: 
+        # https://zcash.readthedocs.io/en/master/rtd_pages/Debian-Ubuntu-build.html
+      - uses: actions/checkout@v3
+    
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with: 
+          path: ./depends
+          key: Windows-${{ hashFiles('depends/packages/**') }}
+
+      - name: Run build in Docker
+        uses: addnab/docker-run-action@v3 
+        with: 
+          image: electriccoinco/zcashd-build-ubuntu-jammy
+          options: -v ${{ github.workspace }}:/zside --workdir=/zside
+          shell: bash
+          run: |
+            set -e
+            make -C ./depends download-win
+            HOST=x86_64-w64-mingw32 make -C ./depends
+            export CONFIG_SITE=$PWD/depends/x86_64-w64-mingw32/share/config.site
+            ./autogen.sh
+            ./configure --disable-tests --disable-bench --disable-hardening --enable-online-rust
+            make -C src cargo-build-lib
+            BRIDGE_LOCATION=$(dirname $(./contrib/devtools/find-libcxxbridge.sh))
+            export LDFLAGS="-L$BRIDGE_LOCATION -lcxxbridge1"
+            ./configure --disable-tests --disable-bench --disable-hardening --enable-online-rust
+            make -j
+
+      - uses: actions/upload-artifact@v4
+        with: 
+          name: binaries-Windows
+          if-no-files-found: error
+          path: |
+            src/zsided.exe
+            src/zside-cli.exe
 
   build-macos: 
     name: Build macOS binaries
@@ -83,7 +122,7 @@ jobs:
         run: make -C ./depends download-osx
 
       - name: build dependencies
-        run: make -C ./depends
+        run: make -C ./depends -j
 
       - run: ./autogen.sh
 
