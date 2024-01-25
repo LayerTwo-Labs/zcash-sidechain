@@ -61,7 +61,7 @@ jobs:
 
   build-macos: 
     name: Build macOS binaries
-    runs-on: macos-latest
+    runs-on: macos-latest-large
     steps: 
         # https://zcash.readthedocs.io/en/master/rtd_pages/Debian-Ubuntu-build.html
       - name: install deps
