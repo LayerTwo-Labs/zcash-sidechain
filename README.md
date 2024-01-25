@@ -144,6 +144,13 @@ nix-shell # this will install all build tools and dependencies
 make -j8 # or number of cores you want to use
 ```
 
+### General build notes
+
+* **Binary sizes**. The `zsided` and `zside-cli` binaries are large. Linux binaries 
+  are around 150MB, and Windows binaries are over 200MB! They can be reduced by 
+  setting `CFLAGS` and `CXXFLAGS` to `-g0`. This disables debug information, and
+  more than halves binary sizes.
+
 ### Regtest Demo Script
 
 A script for: activating this sidechain (on [drivechain](https://github.com/drivechain-project/mainchain/)), mining blocks, depositing and withdrawing coins, generating t/z addresses and using them, is [available here](zside-tour-2022.sh).
