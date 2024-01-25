@@ -93,6 +93,7 @@ zcash_gtest_LDADD += \
   $(ZMQ_LIBS) \
   $(LIBZCASH) \
   $(LIBRUSTZCASH) \
+  $(LIBRUSTDRIVECHAIN) \
   $(LIBZCASH_LIBS)
 
 zcash_gtest_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) -static
