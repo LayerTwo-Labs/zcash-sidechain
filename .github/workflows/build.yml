@@ -10,7 +10,7 @@ on:
 jobs: 
   build-linux: 
     name: Build Linux binaries
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-large
     steps: 
         # https://zcash.readthedocs.io/en/master/rtd_pages/Debian-Ubuntu-build.html
       - name: install Linux deps
