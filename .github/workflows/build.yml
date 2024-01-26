@@ -60,7 +60,7 @@ jobs:
 
   build-windows: 
     name: Build Windows binaries
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-large
     steps: 
         # https://zcash.readthedocs.io/en/master/rtd_pages/Debian-Ubuntu-build.html
       - uses: actions/checkout@v3
