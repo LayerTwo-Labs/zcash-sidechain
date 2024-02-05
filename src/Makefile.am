@@ -53,10 +53,10 @@ endif
 #   requires https://github.com/rust-bitcoin/rust-secp256k1/issues/380 to be addressed.
 #   FIXME: fix linking errors and add RUSTFLAGS="--cfg=rust_secp_no_symbol_renaming" back
 #
-# It's important that we pass on the CXX parameters to Rust. This ensures that the generated
+# It's important that we pass on the CXX and CXXFLAGS parameters to Rust. This ensures that the generated
 # C++ code is compiled with the same configuration as the non-generated C++ code, which again
 # ensures ABI compatability at link time.
-RUST_ENV_VARS = CXX="$(CXX)" RUSTC="$(RUSTC)" TERM=dumb
+RUST_ENV_VARS = CXXFLAGS="$(CXXFLAGS)" CXX="$(CXX)" RUSTC="$(RUSTC)" TERM=dumb
 RUST_BUILD_OPTS = --release --target $(RUST_TARGET) --manifest-path $(top_srcdir)/Cargo.toml
 
 rust_verbose = $(rust_verbose_@AM_V@)

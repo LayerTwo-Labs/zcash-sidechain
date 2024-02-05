@@ -100,6 +100,31 @@ system instead, without success. If someone more skilled at the
 build system than the previous author strolls along, please 
 take a look.
 
+### Cross-compiling from Linux to Windows
+
+Building binaries for Windows must happen through cross-compiling 
+from a Linux machine. This requires a rather specific set of 
+packages on the host machine, so the easiest way is to do this
+through a Docker container. We use the `electriccoinco/zcashd-build-ubuntu-jammy`
+image, provided by the upstream Zcash devs.
+
+```bash
+# from the root of this repo
+$ docker run -ti -v $PWD:/zside --workdir /zside electriccoinco/zcashd-build-ubuntu-jammy bash
+
+$ HOST=x86_64-w64-mingw32 make -C depends V=1 -j8
+$ export CONFIG_SITE=$PWD/depends/x86_64-w64-mingw32/share/config.site
+$ ./autogen.sh
+$ ./configure --disable-tests --disable-bench --disable-hardening --enable-online-rust
+$ make -C src cargo-build-lib
+$ BRIDGE_LOCATION=$(dirname $(./contrib/devtools/find-libcxxbridge.sh))
+$ export LDFLAGS="-L$BRIDGE_LOCATION -lcxxbridge1" 
+$ ./configure --disable-tests --disable-bench --disable-hardening --enable-online-rust
+$ make -j8
+
+# final result is in ./src/zsided.exe
+```
+
 ### Nix - currently not working
 
 To install all dependencies and build zcash-sidechain on ubuntu (22.04) run:
@@ -118,6 +143,13 @@ nix-shell # this will install all build tools and dependencies
 ./configure $configureFlags
 make -j8 # or number of cores you want to use
 ```
+
+### General build notes
+
+* **Binary sizes**. The `zsided` and `zside-cli` binaries are large. Linux binaries 
+  are around 150MB, and Windows binaries are over 200MB! They can be reduced by 
+  setting `CFLAGS` and `CXXFLAGS` to `-g0`. This disables debug information, and
+  more than halves binary sizes.
 
 ### Regtest Demo Script
 
