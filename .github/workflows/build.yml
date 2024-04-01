@@ -112,3 +112,29 @@ jobs:
           path: |
             src/zsided
             src/zside-cli
+
+  upload-artifacts-to-releases-drivechain-info:
+    name: Upload artifacts to releases.drivechain.info
+    runs-on: ubuntu-latest
+    needs: [build-linux, build-macos]
+    if: github.repository_owner == 'LayerTwo-Labs'
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Zip artifacts
+        run: |
+          mv binaries-Linux zside-latest-linux
+          zip -r zside-latest-linux.zip zside-latest-linux
+          mv binaries-macOS zside-latest-macos
+          zip -r zside-latest-macOS.zip zside-latest-macos
+
+      - name: Upload artifacts to releases.drivechain.info
+        uses: cross-the-world/ssh-scp-ssh-pipelines@latest
+        with:
+          host: 45.33.96.47
+          user: root
+          pass: ${{ secrets.RELEASES_SERVER_PW }}
+          port: 22
+          scp: |
+            'zside-latest-*.zip' => '/var/www/html/'
