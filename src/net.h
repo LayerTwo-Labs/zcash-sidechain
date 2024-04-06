@@ -65,7 +65,7 @@ static const unsigned int DEFAULT_MAX_PEER_CONNECTIONS = 125;
 /** The default for -maxuploadtarget. 0 = Unlimited */
 static const uint64_t DEFAULT_MAX_UPLOAD_TARGET = 0;
 /** The default for -mainport. */
-static const uint64_t DEFAULT_MAIN_PORT = 18443;
+static const uint64_t DEFAULT_MAIN_PORT = 8332;
 /** Default for blocks only*/
 static const bool DEFAULT_BLOCKSONLY = false;
 /**
