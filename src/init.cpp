@@ -334,6 +334,11 @@ std::string HelpMessage(HelpMessageMode mode)
 
     std::string strUsage = HelpMessageGroup(_("Options:"));
     strUsage += HelpMessageOpt("-?", _("This help message"));
+
+    // Mainchain connection options
+    strUsage += HelpMessageOpt("-mainhost=<host>", "Host to connect to mainchain node on (default: localhost)");
+    strUsage += HelpMessageOpt("-mainport=<port>", strprintf("Port to connect to mainchain node on (default: %d)", DEFAULT_MAIN_PORT));
+
     strUsage += HelpMessageOpt("-alerts", strprintf(_("Receive and display P2P network alerts (default: %u)"), DEFAULT_ALERTS));
     strUsage += HelpMessageOpt("-alertnotify=<cmd>", _("Execute command when a relevant alert is received or we see a really long fork (%s in cmd is replaced by message)"));
     strUsage += HelpMessageOpt("-allowdeprecated=<feature>", strprintf(_("Explicitly allow the use of the specified deprecated feature. Multiple instances of this parameter are permitted; values for <feature> must be selected from among {%s}"), GetAllowableDeprecatedFeatures()));
