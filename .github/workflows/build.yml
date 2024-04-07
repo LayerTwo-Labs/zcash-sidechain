@@ -164,10 +164,11 @@ jobs:
 
       - name: Zip artifacts
         run: |
-          mv binaries-Linux zside-latest-linux
-          zip -r zside-latest-linux.zip zside-latest-linux
-          mv binaries-macOS zside-latest-macos
-          zip -r zside-latest-macOS.zip zside-latest-macos
+          mv binaries-Linux L2-S5-ZSide-latest-x86_64-unknown-linux-gnu
+          zip -r L2-S5-ZSide-latest-x86_64-unknown-linux-gnu.zip L2-S5-ZSide-latest-x86_64-unknown-linux-gnu
+
+          mv binaries-macOS L2-S5-ZSide-latest-x86_64-apple-darwin
+          zip -r L2-S5-ZSide-latest-x86_64-apple-darwin.zip L2-S5-ZSide-latest-x86_64-apple-darwin
 
       - name: Upload artifacts to releases.drivechain.info
         uses: cross-the-world/ssh-scp-ssh-pipelines@latest
@@ -177,4 +178,4 @@ jobs:
           pass: ${{ secrets.RELEASES_SERVER_PW }}
           port: 22
           scp: |
-            'zside-latest-*.zip' => '/var/www/html/'
+            'L2-S5-*.zip' => '/var/www/html/'
