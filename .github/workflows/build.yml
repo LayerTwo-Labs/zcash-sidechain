@@ -156,7 +156,8 @@ jobs:
     name: Upload artifacts to releases.drivechain.info
     runs-on: ubuntu-latest
     needs: [build-linux, build-macos]
-    if: github.repository_owner == 'LayerTwo-Labs'
+    # avoid uploading on PRs!
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository_owner == 'LayerTwo-Labs'
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
