@@ -63,11 +63,13 @@ static bool MatchPayToPubkeyHash(const CScript& script, valtype& pubkeyhash)
 
 static bool MatchWithdrawal(const CScript& script, valtype& refundKeyHash, valtype& mainAddress, valtype& mainFee)
 {
-    CScript p2pkh(script.begin()+30, script.end());
-    if (script.size() == 30 + 25 && script[0] == 28 && script[29] == OP_DROP && MatchPayToPubkeyHash(p2pkh, refundKeyHash)) {
-        mainAddress = valtype(script.begin()+1, script.begin()+21);
-        mainFee = valtype(script.begin()+21, script.begin()+29);
-        return true;
+    if (script.size() == 30 + 25 && script[0] == 28 && script[29] == OP_DROP) {
+        CScript p2pkh(script.begin()+30, script.end());
+        if (MatchPayToPubkeyHash(p2pkh, refundKeyHash)) {
+            mainAddress = valtype(script.begin()+1, script.begin()+21);
+            mainFee = valtype(script.begin()+21, script.begin()+29);
+            return true;
+        }
     }
     return false;
 }
