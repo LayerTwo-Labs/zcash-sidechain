@@ -75,6 +75,9 @@ std::vector<CTxOut> CDrivechain::GetCoinbaseOutputs()
         std::string address(output.address);
         LogPrintf("deposit output: address = %s, amount = %d\n", address, output.amount);
         CTxDestination dest = keyIO.DecodeDestination(address);
+        if(std::holds_alternative<CNoDestination>(dest)) {
+            continue;
+        }
         CScript scriptPubKey = GetScriptForDestination(dest);
         CTxOut txout(output.amount, scriptPubKey);
         txouts.push_back(txout);

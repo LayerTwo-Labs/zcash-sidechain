@@ -467,6 +467,11 @@ UniValue deposit(const UniValue& params, bool fHelp) {
         address = keyIO.EncodeDestination(keyID);
     } else {
         address = params[2].get_str();
+        KeyIO keyIO(Params());
+        CTxDestination dest = keyIO.DecodeDestination(address);
+        if(std::holds_alternative<CNoDestination>(dest)) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid deposit address: ") + address);
+        }
     }
 
     return drivechain->CreateDeposit(address, nAmount, nFee);
