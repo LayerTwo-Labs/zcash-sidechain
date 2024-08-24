@@ -62,7 +62,7 @@ bool CDrivechain::IsConnected(const CBlockHeader& block)
 
 bool CDrivechain::VerifyBMM(const CBlockHeader& block)
 {
-    return this->drivechain->verify_bmm(block.hashPrevMainBlock.GetHex(), block.hashMerkleRoot.GetHex());
+    return this->drivechain->verify_bmm(block.hashPrevMainBlock.GetHex(), block.GetHash().GetHex());
 }
 
 std::vector<CTxOut> CDrivechain::GetCoinbaseOutputs()
