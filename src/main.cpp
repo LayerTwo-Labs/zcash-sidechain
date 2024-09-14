@@ -5076,7 +5076,7 @@ bool HandleMainchainReorg(CValidationState& state, const CChainParams& chainpara
     bool fGenesis = pindex->GetBlockHeader().GetHash() == chainparams.GetConsensus().hashGenesisBlock;
     // If a mainchain block with a bmm commitment for the tip is disconnected,
     // then we also must disconnect the tip.
-    while (!fGenesis && drivechain->VerifyBMM(pindex->GetBlockHeader()) && !drivechain->IsConnected(pindex->GetBlockHeader())) {
+    while (!fGenesis && !drivechain->VerifyBMM(pindex->GetBlockHeader())) {
         // So we invalidate the tip until we reach a block with a commitment in
         // a mainchain block that is part of consensus.
         InvalidateBlock(state, chainparams, pindex);
